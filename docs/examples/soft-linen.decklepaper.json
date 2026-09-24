@@ -1,0 +1,15 @@
+{
+  "id": "paper-example-soft-linen",
+  "name": "Soft Linen",
+  "tintRed": 0.96,
+  "tintGreen": 0.94,
+  "tintBlue": 0.90,
+  "wash": 0.32,
+  "weave": 0.08,
+  "blotch": 0.10,
+  "engineVersion": 3,
+  "seed": 24092026,
+  "fiberAngle": 0.30,
+  "fiberStrength": 0.30,
+  "surfaceRoughness": 0.15
+}

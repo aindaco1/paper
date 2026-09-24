@@ -1,0 +1,33 @@
+[
+  {
+    "path": "Sources/Paper/Vendor/Deckle/TexturePreset.swift",
+    "repository": "https://github.com/YellowFoxH4XOR/deckle",
+    "commit": "cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91",
+    "source": "Sources/Deckle/TexturePreset.swift",
+    "sha256": "a898dbdef05091dd671383a4191a9556e1f76e6a895a1ff6e4869f3ba5e999c8"
+  },
+  {
+    "path": "Sources/Paper/Vendor/Deckle/TextureRenderer.swift",
+    "repository": "https://github.com/YellowFoxH4XOR/deckle",
+    "commit": "cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91",
+    "source": "Sources/Deckle/TextureRenderer.swift",
+    "sha256": "9c41e70f4204d3288116d16f112d2b265c5bc51618984f6de3f304cf6ac922aa"
+  },
+  {
+    "path": "Sources/Paper/Vendor/Deckle/CustomPaper.swift",
+    "repository": "https://github.com/YellowFoxH4XOR/deckle",
+    "commit": "cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91",
+    "source": "Sources/Deckle/PaperMill.swift",
+    "extraction": "Prefix before the Paper Mill controller; model and TexturePreset conversion only.",
+    "sha256": "5355872e21aa0e2fa56992b882e5b50e339c8f845694d56d05ecdc300b405b2a"
+  },
+  {
+    "path": "Sources/Paper/Vendor/Record/LaunchAtLoginController.swift",
+    "repository": "https://github.com/aindaco1/record",
+    "commit": "3f687d9131f13e3bfc309653a187f97acf911bc2",
+    "source": "Sources/Record/LaunchAtLoginController.swift",
+    "sha256": "6e10bc907e26d2ef3833b9d7269a70a07aa54a9d0d86aade53a9cb5dd1a961ba",
+    "upstreamSha256": "dd1331b6c376a815151f91d4c1489ec6c74ee3860893a7a67719da6e2d72c603",
+    "adaptation": "Construct the default login service inside the isolated initializer for Swift 5 language-mode compatibility."
+  }
+]
