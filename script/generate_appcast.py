@@ -22,5 +22,8 @@ with tempfile.TemporaryDirectory(prefix='paper-appcast-') as folder:
     namespace = '{http://www.andymatuschak.org/xml-namespaces/sparkle}'
     if enclosure is None or not enclosure.get(namespace + 'edSignature'): raise SystemExit('Unsigned update archive.')
     if items[0].findtext(namespace + 'shortVersionString') != version: raise SystemExit('Feed version mismatch.')
+    signer = str(root / '.build/artifacts/sparkle/Sparkle/bin/sign_update')
+    subprocess.run([signer, '--account', 'xyz.dustwave.paper', str(stage / 'appcast.xml')], check=True)
+    subprocess.run([signer, '--account', 'xyz.dustwave.paper', '--verify', str(stage / 'appcast.xml')], check=True)
     shutil.copy2(stage / 'appcast.xml', root / 'outputs/appcast.xml')
 print('Signed Paper appcast generated.')
