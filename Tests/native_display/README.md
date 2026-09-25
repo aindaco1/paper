@@ -58,6 +58,28 @@ Sleep menu instead of `pmset sleepnow`. A timeout or a host with system sleep
 disabled is a failure/blocker, never a physical pass. Do not change system power
 settings or enable administrator access as an implicit test setup step.
 
+## Mission Control / Spaces overview
+
+```sh
+python3 Tests/native_display/mission_control.py --app dist/Paper.app --evidence outputs/Paper-mission-control.json
+```
+
+Quit the ordinary Paper instance and close Mission Control first. The suite opens
+the actual Mission Control overview, confirms Dock's accessibility group is present,
+and checks that Paper has no on-screen overlays. It exits the overview and checks
+restored geometry, intensity and window level. Focus must match a Paper-off
+baseline through the same transition, including macOS's own focus restoration. Eleven
+checks cover repeated entry/exit, manual off and display exclusions, using isolated
+preferences. The suite closes its overview even after an assertion fails. It needs
+existing Accessibility and System Events automation permission; it takes no screenshots and does not change
+Spaces or system preferences. Fullscreen and excluded floating-panel checks remain
+in the separate suites above.
+
+This metadata check cannot establish that the thumbnails contain the right pixels.
+Also inspect the top-row Space previews with the normal app running: they must show
+window contents, not texture or black rectangles. Check both returning to the same
+Space and selecting another Space, including a fullscreen app.
+
 ## Physical HDR and input
 
 Compile `HDRFixture.swift` as a test-only AppKit executable, then pass an absolute JSONL evidence path when launching it. It renders static extended-linear-sRGB float patches at 0.18, 1, 2 and 4 using `CAMetalLayer`; it never changes brightness, color presets, gamma or power settings. Bring its window to the foreground and allow HDR headroom to settle, then use **Record HDR state**. Compare Paper on/off using the physical shortcut and click **Click-through test** with the real pointer. The evidence records headroom, focus and click counts, without screenshots.

@@ -12,9 +12,13 @@ final class OverlayController {
     private var refreshPending = false
     private var sessionActive = true
     private var asleep = false
+    private let systemOverview = SystemOverviewMonitor()
 
     init(state: PaperState) { self.state = state }
     func start() {
+        systemOverview.start { [weak self] in
+            DispatchQueue.main.async { self?.refresh() }
+        }
         changes = state.objectWillChange.sink { [weak self] in self?.scheduleRefresh() }
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -61,6 +65,10 @@ final class OverlayController {
         refresh()
     }
     private func refresh() {
+        systemOverview.update(enabled: sessionActive && !asleep && NSScreen.screens.contains {
+            guard let id = $0.paperIdentifier else { return false }
+            return state.reason(for: id) == nil
+        })
         var connected = Set<String>()
         for screen in NSScreen.screens {
             guard let id = screen.paperIdentifier else { continue }
@@ -68,6 +76,10 @@ final class OverlayController {
             // Do not create/render a window until this display is actually enabled.
             guard sessionActive, !asleep, state.reason(for: id) == nil else {
                 windows.removeValue(forKey: id)?.close()
+                continue
+            }
+            if systemOverview.isActive {
+                windows[id]?.orderOut(nil)
                 continue
             }
             let window = windows[id] ?? PaperOverlayWindow(screen: screen)
@@ -86,6 +98,7 @@ final class OverlayController {
         }
     }
     func stop() {
+        systemOverview.stop()
         changes = nil
         for observer in observers {
             NotificationCenter.default.removeObserver(observer)
@@ -120,6 +133,8 @@ final class PaperOverlayWindow: NSPanel {
         // NSScreen.frame is global; the initializer's origin is screen-relative.
         setFrame(screen.frame, display: false)
         level = .screenSaver
+        // The overview monitor orders this window out explicitly. Keep it
+        // stationary so AppKit does not delay restoring a transient panel.
         collectionBehavior = [.canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         backgroundColor = .clear
         isOpaque = false
