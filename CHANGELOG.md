@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.1] - 2026-09-25
+
+- Adopt the shared Apple support core through the compatible desktop diagnostics API. Preserve reviewed reports, explicit sending, update consent and existing app behavior.
+
 ## 1.0.0 - 2026-09-25
 
 - Add system-appearance and app-specific saved looks, display-matched desk profiles, and per-texture intensity recall.
