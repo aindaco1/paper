@@ -14,7 +14,7 @@ for (const entry of JSON.parse(readFileSync(resolve(root, 'docs/vendor-sources.j
   assert.equal(sha256File(resolve(root, entry.path)), entry.sha256, `Vendored source changed: ${entry.path}`);
 }
 assert.equal(readFileSync(resolve(root, 'shared/dust-wave-platform/desktop/VERSION'), 'utf8').trim(), '0.1.0');
-const files = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'docs/upstream-review.md', 'docs/testing.md', 'docs/privacy.md', 'docs/support.md', 'docs/releasing.md', 'docs/roadmap.md'];
+const files = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'docs/upstream-review.md', 'docs/testing.md', 'docs/privacy.md', 'docs/support.md', 'docs/releasing.md', 'docs/roadmap.md', 'docs/paperman-review.md'];
 const result = checkDocumentation({ root, files: files.map(file => resolve(root, file)),
   requiredFiles: files, restrictToRoot: true });
 assert.deepEqual(result.errors, []);

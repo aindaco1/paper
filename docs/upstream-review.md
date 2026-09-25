@@ -8,7 +8,7 @@ Paper uses Deckle revision `cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91`. It vendor
 | --- | --- |
 | [Issue 19: scheduling](https://github.com/YellowFoxH4XOR/deckle/issues/19) | Implement a local-time window without location access, explicit precedence and DST tests. |
 | [Issue 17: battery/Low Power Mode](https://github.com/YellowFoxH4XOR/deckle/issues/17) | Implement both optional rules using system notifications and a power-source callback. |
-| [Issue 18: custom snooze](https://github.com/YellowFoxH4XOR/deckle/issues/18) | Addressed in 0.1.1: 15/30/60/120 minutes, custom whole minutes (1–1,440), and next-day 6 AM. Settings and menu bar share the choices and deadline policy; DST, persistence and pause precedence are tested. |
+| [Issue 18: custom snooze](https://github.com/YellowFoxH4XOR/deckle/issues/18) | Addressed in 0.1.1: 15/30/60/120 minutes, custom whole minutes (1–1,440), and next-day 6 AM. The menu bar and Shortcuts share the deadline policy; DST, persistence and pause precedence are tested. |
 | [Issue 27](https://github.com/YellowFoxH4XOR/deckle/issues/27), [PR 34](https://github.com/YellowFoxH4XOR/deckle/pull/34) | Use a regular, scrollable settings window and a small NSMenu. No expanding MenuBarExtra popover to resize. |
 | [PR 43: file failures](https://github.com/YellowFoxH4XOR/deckle/pull/43) | Report import errors, retain successful entries, assign fresh identities and test partial imports. In 0.1.1, decode failures explain that a complete, supported Deckle JSON recipe is required. No export/editor scope. |
 | [PR 44: visibility coverage](https://github.com/YellowFoxH4XOR/deckle/pull/44) | Add explicit, value-only policy tests. Paper's own settings do not bypass the underlying foreground-app exclusion. |

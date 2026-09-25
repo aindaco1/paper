@@ -158,22 +158,24 @@ struct PaperDiagnosticsView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Help & diagnostics").font(.title2)
             Text("Review a filtered report, save it locally, or send it to Paper’s public GitHub issues. Matching reports are grouped together.")
+                .fixedSize(horizontal: false, vertical: true)
             Text("Includes app/system versions, broad overlay state, recent event categories and an optional crash summary. Excludes app names, display IDs, city, paths, recipe contents and raw logs.")
-                .font(.callout).foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             ScrollView { Text(model.preview).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(12) }
                 .frame(height: 260).background(.quaternary, in: RoundedRectangle(cornerRadius: 8)).accessibilityLabel("Report preview")
-            Text(model.status).font(.callout).accessibilityIdentifier("paper.reportStatus")
+            Text(model.status).font(.callout).fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("paper.reportStatus")
             if let url = model.issueURL { Link("View GitHub issue", destination: url) }
-            HStack {
-                Button("Refresh") { model.refresh() }
-                Button("Import crash log…") { model.importCrash(window: NSApp.keyWindow) }
-                Button("Save report…") { model.export(window: NSApp.keyWindow) }
-            }.disabled(model.sending)
-            HStack {
-                Spacer()
-                Button("Send to public GitHub issues") { model.send() }.disabled(!model.canSend).buttonStyle(.borderedProminent)
-            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Group {
+                    Button("Refresh") { model.refresh() }
+                    Button("Import crash log…") { model.importCrash(window: NSApp.keyWindow) }
+                    Button("Save report…") { model.export(window: NSApp.keyWindow) }
+                }.disabled(model.sending)
+                Spacer(minLength: 16)
+                Button("Send to public GitHub issues") { model.send() }
+                    .disabled(!model.canSend).buttonStyle(.borderedProminent)
+            }.controlSize(.regular)
         }.padding(24).frame(width: 640).onAppear { model.prepare() }
     }
 }

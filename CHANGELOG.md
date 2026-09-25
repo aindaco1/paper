@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Simplify Settings: use the main toggle to compare, and keep Snooze in the menu bar.
+
+- Align Help & diagnostics actions in one footer with consistent control sizing, and wrap support/privacy text without truncation.
+
 ## 0.4.0
 
 - Add standard signed Sparkle updates through Platform's separate desktop package, automatic-check preference and manual checking.

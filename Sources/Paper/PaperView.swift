@@ -63,21 +63,6 @@ struct PaperView: View {
                         Text("Coarse").tag(2.0)
                     }.pickerStyle(.segmented).disabled(state.settings.automaticLooks.enabled)
                     HStack {
-                        Button(state.comparing ? "Back to paper" : "Compare original") { state.comparing.toggle() }
-                            .disabled(!state.settings.enabled)
-                        Spacer()
-                        Menu("Snooze") {
-                            ForEach(SnoozeOption.allCases) { option in
-                                Button(option.title) { state.snooze(option) }
-                            }
-                            Divider()
-                            Button("Custom duration…") { state.showingCustomSnooze = true }
-                        }.fixedSize().disabled(!state.settings.enabled)
-                        if let until = state.settings.snoozeUntil, until > state.now {
-                            Button("End snooze") { state.settings.snoozeUntil = nil }
-                        }
-                    }
-                    HStack {
                         Button("Import paper…", action: importPaper).disabled(choosingFile)
                         Spacer()
                         if state.customPapers.contains(where: { $0.id == state.settings.textureID }) {
