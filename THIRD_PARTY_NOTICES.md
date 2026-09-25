@@ -1,5 +1,9 @@
 # Third-party notices
 
+## Shared desktop services
+
+Dust Wave Platform desktop 0.2.0 provides shared updater and reviewed-report mechanics under MIT. Original Record, Auto Subtitle, CutNotes and Podcast Visualizer notices remain in `shared/dust-wave-platform/desktop/LICENSE.*` and are packaged with Platform's MIT license in `Contents/Resources/Licenses`.
+
 Paper is MIT-licensed. Its bundled notices retain the upstream copyright statements.
 
 - Deckle, Copyright (c) 2026 Deckle contributors, MIT: TexturePreset.swift and TextureRenderer.swift are unchanged pinned sources; CustomPaper.swift contains the model/conversion portion of PaperMill.swift. Overlay drawing follows Deckle's retained tiled-layer approach. [License](Licenses/Deckle-MIT.txt), [upstream](https://github.com/YellowFoxH4XOR/deckle).

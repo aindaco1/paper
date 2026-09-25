@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Share the existing shared desktop package, advanced to version 0.2.0 through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
+
 ## 0.4.1
 
 - Simplify Settings: use the main toggle to compare, and keep Snooze in the menu bar.
