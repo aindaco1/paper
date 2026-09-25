@@ -69,6 +69,9 @@ final class OverlayController {
             }
             let window = windows[id] ?? PaperOverlayWindow(screen: screen)
             windows[id] = window
+            window.level = NSWindow.Level(rawValue: OverlayPolicy.windowLevel(
+                defaultLevel: NSWindow.Level.screenSaver.rawValue, normalLevel: NSWindow.Level.normal.rawValue,
+                excludedPanelLevels: state.excludedPanelLevels))
             if window.frame != screen.frame { window.setFrame(screen.frame, display: false) }
             window.apply(texture: state.texture, adjustments: state.adjustments)
             window.alphaValue = state.settings.intensity

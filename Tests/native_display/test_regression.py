@@ -10,6 +10,8 @@ class OverlayOracleTests(unittest.TestCase):
             changed=dict(window,frame=dict(window['frame'],**{key:value}))
             self.assertTrue(overlay_failures(dict(windows=[changed],frontPID=7),[screen],7))
         self.assertTrue(overlay_failures(dict(windows=[window],frontPID=8),[screen],7))
+        self.assertTrue(overlay_failures(dict(windows=[window],frontPID=7),[screen],7,level=26))
+        self.assertEqual(overlay_failures(dict(windows=[dict(window,layer=26)],frontPID=7),[screen],7,level=26),[])
         self.assertTrue(overlay_failures(dict(windows=[dict(window,alpha=0.34)],frontPID=7),[screen],7))
 
     def test_off_exclusions_and_duplicate_overlays_are_observed(self):

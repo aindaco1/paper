@@ -16,10 +16,11 @@ host, so the harness does not rely on it. The suite clears only its own UUID
 domains after terminating its app processes, then verifies that they contain no data.
 macOS may retain empty preferences-domain files. Login preferences are never changed.
 
-Fifteen checks cover 1×/2× monitors, right/left/above positions, non-16:9 geometry,
+Eighteen checks cover 1×/2× monitors, right/left/above positions, non-16:9 geometry,
 all-display coverage, per-display exclusion, manual off, and adding/removing a
-monitor while Paper runs. Every visible overlay must match a display within one
-logical point, have the expected opacity, and leave the foreground PID unchanged.
+monitor while Paper runs. A test-only accessory app also checks nonactivating floating
+panels with and without exclusion, plus normal stacking after it quits. Every visible overlay must match a display within one
+logical point, have the expected opacity and window level, and leave the foreground PID unchanged.
 Deliberately wrong geometry, focus, opacity and duplicate-window fixtures verify
 the failure oracle. Evidence includes the supplied executable hash and topology.
 

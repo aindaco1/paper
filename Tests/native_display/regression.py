@@ -18,8 +18,8 @@ sys.path.insert(0, str(ROOT / 'shared/dust-wave-platform/tools/macos-display'))
 from support import NativeTools, serial_desktop, terminate, wait_for
 
 
-def overlay_failures(snapshot, screens, front, intensity=0.19):
-    windows = [w for w in snapshot['windows'] if w['layer'] >= 1000 and w['alpha'] > 0]
+def overlay_failures(snapshot, screens, front, intensity=0.19, level=1000):
+    windows = [w for w in snapshot['windows'] if w['layer'] >= 1 and w['alpha'] > 0]
     failures = []
     if len(windows) != len(screens):
         failures.append(f'Expected {len(screens)} overlays, got {len(windows)}')
@@ -30,6 +30,8 @@ def overlay_failures(snapshot, screens, front, intensity=0.19):
             failures.append('Overlay does not exactly cover display ' + screen['name'])
         elif abs(matches[0]['alpha'] - intensity) > 0.01:
             failures.append('Isolated test intensity was not applied')
+        elif matches[0]['layer'] != level:
+            failures.append('Overlay has the wrong window level')
     if snapshot['frontPID'] != front:
         failures.append('Overlay stole foreground focus')
     return failures
@@ -63,16 +65,16 @@ class PaperCase:
             raise RuntimeError('Paper exited during native display test')
         return self.tools.window('snapshot', self.process.pid)
 
-    def check(self, screens, front, label):
+    def check(self, screens, front, label, level=1000):
         # Wait only for creation/readiness, not for geometry/focus assertions to pass.
         if screens:
-            wait_for(lambda: any(w['layer'] >= 1000 and w['alpha'] > 0 for w in self.snapshot()['windows']),
+            wait_for(lambda: any(w['layer'] >= 1 and w['alpha'] > 0 for w in self.snapshot()['windows']),
                      'first overlay window')
         else:
             time.sleep(0.5)
         time.sleep(0.3)
         snapshot = self.snapshot()
-        failures = overlay_failures(snapshot, screens, front)
+        failures = overlay_failures(snapshot, screens, front, level=level)
         if failures:
             raise AssertionError(label + ': ' + '; '.join(failures) + '; observed ' + json.dumps(snapshot))
         return {'name': label, 'status': 'passed', 'displays': screens, 'windowState': snapshot}
@@ -138,6 +140,39 @@ def run(app, evidence):
                 report['cases'].append(case.check(baseline,front,'display removed while running'))
             finally:
                 case.close()
+            # A real accessory panel that does not activate its owning application.
+            fixture = root/'FloatingFixture.app/Contents'
+            (fixture/'MacOS').mkdir(parents=True)
+            identifier = 'xyz.dustwave.paper.fixture.floating'
+            (fixture/'Info.plist').write_bytes(plistlib.dumps(dict(CFBundleIdentifier=identifier,
+                CFBundleExecutable='FloatingFixture', CFBundlePackageType='APPL', LSUIElement=True)))
+            subprocess.run(['swiftc', str(ROOT/'Tests/native_display/FloatingPanel.swift'),
+                            '-o', str(fixture/'MacOS/FloatingFixture')], check=True)
+            subprocess.run(['codesign', '--sign', '-', str(fixture.parent)], check=True)
+            floating = subprocess.Popen([str(fixture/'MacOS/FloatingFixture')],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                wait_for(lambda: any(w['layer'] == 27 for w in tools.window('snapshot', floating.pid)['windows']),
+                         'nonactivating floating panel')
+                if tools.window('snapshot', floating.pid)['frontPID'] != front:
+                    raise RuntimeError('Floating fixture activated itself; no overlay focus assertion is valid')
+                for excluded in (False, True):
+                    preferences = settings()
+                    if excluded:
+                        preferences['excludedApps'] = [dict(bundleID=identifier, name='Floating fixture')]
+                    case = PaperCase(app, tools, root/f'floating-{excluded}', preferences)
+                    try:
+                        time.sleep(0.7)
+                        report['cases'].append(case.check(baseline, front,
+                            f'nonactivating panel excluded={excluded}', level=26 if excluded else 1000))
+                        if excluded:
+                            terminate(floating)
+                            time.sleep(0.7)
+                            report['cases'].append(case.check(baseline, front, 'excluded floating app closed'))
+                    finally:
+                        case.close()
+            finally:
+                terminate(floating)
             report['restoredDisplays'] = tools.screens()
             report['status'] = 'passed'
     except Exception as error:

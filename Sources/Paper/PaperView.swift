@@ -108,6 +108,8 @@ struct PaperView: View {
                     }
                 }
                 Section("Pause in these apps") {
+                    Text("Pauses when an app is active. Floating panels from excluded apps stay above the texture.")
+                        .font(.caption).foregroundStyle(.secondary)
                     if state.settings.excludedApps.isEmpty {
                         Text("Keep an unmodified view in photo, video, or other apps you choose.")
                             .font(.callout).foregroundStyle(.secondary)

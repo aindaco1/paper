@@ -52,6 +52,18 @@ final class OverlayPolicyTests: XCTestCase {
         settings.disabledDisplays = ["external"]
         XCTAssertEqual(OverlayPolicy.pauseReason(settings: settings, displayID: "external", now: date(12)), .displayExcluded)
     }
+    func testFloatingExclusionKeepsOrdinaryWindowsTextured() {
+        XCTAssertEqual(OverlayPolicy.windowLevel(defaultLevel: 1000, normalLevel: 0,
+                                                excludedPanelLevels: [27]), 26)
+        XCTAssertEqual(OverlayPolicy.windowLevel(defaultLevel: 1000, normalLevel: 0,
+                                                excludedPanelLevels: [27, 8]), 7)
+    }
+    func testClosedAndNormalWindowsDoNotLowerOverlay() {
+        XCTAssertEqual(OverlayPolicy.windowLevel(defaultLevel: 1000, normalLevel: 0,
+                                                excludedPanelLevels: []), 1000)
+        XCTAssertEqual(OverlayPolicy.windowLevel(defaultLevel: 1000, normalLevel: 0,
+                                                excludedPanelLevels: [-1, 0, 1, 2000]), 1000)
+    }
     func testAppBatteryLowPowerAndScheduleAreIndependentGates() {
         var settings = PaperSettings()
         settings.excludedApps = [.init(bundleID: "photo.app", name: "Photos")]
@@ -87,4 +99,3 @@ final class OverlayPolicyTests: XCTestCase {
         XCTAssertEqual(settings.schedule.startMinute, 1439)
     }
 }
-

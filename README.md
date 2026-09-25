@@ -8,6 +8,8 @@ Paper includes all 26 textures in the pinned Deckle catalog, favorites, saved lo
 
 Open Paper to show settings. Close the settings window to leave the effect running. Use its menu-bar icon to toggle, snooze or quit. Comparison ends when settings close. Snoozing, excluded apps/displays, battery rules and schedules never override the master off switch.
 
+App exclusions pause Paper when that app is active. Nonactivating floating panels, such as Atoll’s notch UI, stay above the texture while ordinary windows remain textured. Paper briefly checks public window metadata while an excluded app is running; it does not use screenshots, window titles or Accessibility permission. Normal stacking returns when those panels close.
+
 Both snooze menus offer 15/30/60/120 minutes, **Until tomorrow at 6 AM**, and **Custom duration…** (1–1,440 whole minutes). Tomorrow means the next calendar day in the Mac's current time zone; the deadline is saved as an absolute time. A snooze survives relaunch, and its expiry still respects schedule, battery and exclusion rules.
 
 The fixed-time schedule uses the Mac's local time, supports overnight windows, includes the start time and excludes the end time. Equal start/end times mean all day. Nonexistent daylight-saving times advance to the next valid time; repeated times use the first occurrence. A one-shot timer and wake/timezone notifications update the effect without polling.

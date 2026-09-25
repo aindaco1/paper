@@ -103,6 +103,14 @@ public enum PauseReason: Equatable {
 }
 
 public enum OverlayPolicy {
+    /// Stay above ordinary windows, but beneath an excluded app's floating UI.
+    /// Frontmost exclusions still pause the entire overlay through pauseReason.
+    public static func windowLevel(defaultLevel: Int, normalLevel: Int,
+                                   excludedPanelLevels: [Int]) -> Int {
+        excludedPanelLevels.filter { $0 > normalLevel + 1 && $0 <= defaultLevel }
+            .map { $0 - 1 }.min() ?? defaultLevel
+    }
+
     public static func pauseReason(settings: PaperSettings, displayID: String? = nil,
                                    frontmostBundleID: String? = nil, onBattery: Bool = false,
                                    lowPower: Bool = false, comparing: Bool = false,

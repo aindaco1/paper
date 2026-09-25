@@ -61,3 +61,10 @@ Version 0.2.0 follow-up:
 The test harness accepts only UUID-named disposable preferences suites. A distinct test opacity proves isolation; only test-owned processes are stopped and UUID-domain data is cleared. It does not modify login items or power preferences and takes no screenshots. Native helpers are test-only, separately GPL-3.0-licensed, and excluded from the MIT application.
 
 The virtual suite does not qualify fullscreen Spaces, physical click-through, HDR/EDR, actual monitor firmware/cables, sleep/wake, or all macOS 13+ hardware. Those remain manual/physical acceptance work. Notarization is a trust/distribution check, not hardware compatibility proof.
+
+Version 0.2.1 follow-up:
+
+- Fixed nonactivating floating-panel exclusions. Atoll's bundle identifier was saved correctly, but its visible notch panel did not change the foreground app. Its window was at level 27 while Paper was at 1000. Paper now draws at 26 beneath that excluded panel, preserving the 34% texture across ordinary windows. Foreground-app exclusions still pause the entire overlay; manual off and display exclusions retain priority.
+- A narrow adapter checks public on-screen window metadata only while an excluded app is running and Paper is enabled. It suspends during sleep/session inactivity, ignores hidden apps and transparent windows, and changes state only when panel levels change. No screenshots, window titles, event taps or new permissions are used.
+- 62 XCTest tests and all 18 native display checks passed. The native suite includes a real nonactivating accessory-panel fixture and verifies excluded/unexcluded stacking plus restoration after the excluded app exits. The oracle rejects incorrect levels instead of merely accepting the presence of an overlay.
+- The user's Atoll exclusion, Soft Wove at 34%, coarse grain, schedule-off and power/login settings are preserved. Updated signed/notarized app and DMG evidence accompanies the 0.2.1 delivery.

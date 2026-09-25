@@ -20,6 +20,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var state: PaperState!
     private var overlay: OverlayController!
     private var environment: SystemEnvironment!
+    private var excludedPanels: ExcludedPanelMonitor!
     private var statusItem: NSStatusItem!
     private var window: NSWindow?
     private let shortcut = GlobalShortcut()
@@ -31,6 +32,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         state = PaperState.shared
         overlay = OverlayController(state: state)
         environment = SystemEnvironment(state: state)
+        excludedPanels = ExcludedPanelMonitor(state: state)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: "Paper")
         statusItem.button?.setAccessibilityLabel("Paper")
@@ -44,6 +46,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             DispatchQueue.main.async { self?.synchronize() }
         }
         environment.start()
+        excludedPanels.start()
         overlay.start()
         synchronize()
         PaperShortcuts.updateAppShortcutParameters()
@@ -138,6 +141,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         shortcut.stop()
         overlay.stop()
         environment.stop()
+        excludedPanels.stop()
         state.stop()
         NSStatusBar.system.removeStatusItem(statusItem)
     }

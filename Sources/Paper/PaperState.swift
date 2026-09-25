@@ -77,6 +77,7 @@ final class PaperState: ObservableObject {
     @Published var onBattery = false
     @Published var lowPower = false
     @Published var frontmostBundleID: String?
+    @Published var excludedPanelLevels: [Int] = []
     @Published var displayChoices: [DisplayChoice] = []
     @Published var shortcutError: String?
     @Published var loginState: LaunchAtLoginState = .disabled
