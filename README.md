@@ -2,7 +2,7 @@
 
 A small, free, open-source paper-texture overlay for Apple Silicon Macs running macOS 13 or later.
 
-[Download Paper 1.0](https://github.com/aindaco1/paper/releases/tag/v1.0.0). Open the DMG and drag Paper to Applications. Existing updater-enabled installations can use **Check for Updates…**. Settings and the local library are preserved. See the [release notes](docs/releases/1.0.0.md) and [validation limits](docs/roadmap.md#validation-still-requiring-physical-conditions).
+[Download Paper 1.0.3](https://github.com/aindaco1/paper/releases/tag/v1.0.3). Open the DMG and drag Paper to Applications. Existing updater-enabled installations can use **Check for Updates…**. Settings and the local library are preserved. See the [release notes](docs/releases/1.0.3.md) and [validation limits](docs/roadmap.md#validation-still-requiring-physical-conditions).
 
 Paper includes all 26 textures in the pinned Deckle catalog, favorites, saved looks, intensity and grain controls, menu-bar snooze, per-display intensity, selected-app rules and exclusions, fixed-time or solar schedules, automatic day/night looks, library backup, native Shortcuts actions, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The default toggle shortcut is **Shift–Option–Command–P**, editable in Settings. Launch at login is optional.
 
@@ -14,8 +14,10 @@ App exclusions pause Paper when that app is active. Nonactivating floating panel
 
 Paper removes its overlay while Mission Control (F3) shows windows and Space previews,
 then restores it when you leave the overview, subject to the usual pause rules.
-This uses public Dock window metadata, without screen capture or Accessibility
-permission. A check of current Dock windows runs only while an
+Dock reveal and Command-Tab keep the texture visible. Overview detection uses
+the distinct Dock/WindowManager overview surfaces, not the full-display backdrop
+also used by the Dock and app switcher. This uses public window metadata, without
+screen capture or Accessibility permission. A check of current windows runs only while an
 overlay is eligible to appear; it stops for off, pause, sleep and display exclusions.
 
 The menu-bar Snooze menu offers 15/30/60/120 minutes, **Until tomorrow at 6 AM**, and **Custom duration…** (1–1,440 whole minutes). Tomorrow means the next calendar day in the Mac's current time zone; the deadline is saved as an absolute time. A snooze survives relaunch, and its expiry still respects schedule, battery and exclusion rules.
