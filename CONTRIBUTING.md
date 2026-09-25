@@ -2,6 +2,8 @@
 
 Use Xcode 27+, Node 24, and an Apple Silicon Mac. Initialize the exact Platform submodule with `git submodule update --init --recursive`. Do not edit vendored Deckle/Record files without updating their provenance and retained tests.
 
+Quit an installed Paper copy before running a development build or the native suites. The single-instance rule otherwise reopens the existing app instead of the new binary. Normal app settings are separate from the native suites' disposable preferences.
+
 Before a pull request:
 
 ```sh

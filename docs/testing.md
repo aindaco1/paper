@@ -2,6 +2,8 @@
 
 This file separates automated evidence, local app acceptance and broader release qualification.
 
+For the current release, see [Paper 1.0 validation](validation/1.0.0.md). The versioned results below are historical.
+
 Automated coverage includes the retained Deckle renderer suite and Record login-service tests, plus Paper's schedule boundaries, DST behavior, snooze expiry, manual-off/display/app/power precedence, corrupt-data recovery, recipe identity/seed compatibility, partial import failures, and overlay window input/focus configuration.
 
 Run:
@@ -12,7 +14,7 @@ swift test
 ./script/build_and_run.sh --verify
 ```
 
-Local UI checks should exercise the actual bundled application: toggle, texture/intensity changes, compare, snooze/resume, a display exclusion, app exclusion, schedule gating, valid/invalid recipe imports, persistence after relaunch, the global shortcut, and clean quit. Do not toggle launch at login or change system battery settings merely to make a test pass; use the adapter/policy tests for those paths and mark real system acceptance separately.
+Local UI checks should exercise the actual bundled application: toggle, texture/intensity changes, snooze/resume from the menu, a display exclusion, app exclusion, schedule gating, valid/invalid recipe imports, persistence after relaunch, the global shortcut, and clean quit. Do not toggle launch at login or change system battery settings merely to make a test pass; use the adapter/policy tests for those paths and mark real system acceptance separately.
 
 The declared deployment floor is macOS 13 with an arm64 binary. Runtime testing on macOS 13/14/15/26 and other Apple Silicon machines, base-memory M1, HDR/EDR, mixed external monitors, fullscreen/Stage Manager, hot-plug, sleep/wake and screen-sharing tools remains required before a broad compatibility claim. Developer ID distribution, notarization and installation from the signed DMG have their own checks.
 
@@ -78,4 +80,4 @@ Version 0.3.0 follow-up:
 - 23 native display cases passed, including different global/virtual-display opacities and only-app precedence. Six additional checks passed in actual native fullscreen Spaces: before/during/after, manual off, foreground exclusion and display exclusion. Final artifact hashes are recorded in delivered JSON.
 - The broad review fixes and measurement limitations are described in [performance and security review](performance-security.md). Real sleep/wake was initially blocked by the host's system-wide SleepDisabled setting; no physical success is inferred from notification-policy unit tests. The delivery report records final physical-test and sustained-measurement outcomes.
 
-Version 0.5.0 local follow-through is recorded in [the delivered validation report](../outputs/Paper-0.5.0-validation.md). It distinguishes the expanded policy/native/UI checks from deferred physical hardware and provider-specific authorization/capture acceptance. Menu actions and configuration have separate homes; use the new workflow suite to check duplicate-instance ownership and actual absence of paused overlay windows.
+Version 0.5.0 local follow-through is recorded in [the historical validation report](validation/0.5.0.md). It distinguishes the expanded policy/native/UI checks from deferred physical hardware and provider-specific authorization/capture acceptance. Menu actions and configuration have separate homes; use the new workflow suite to check duplicate-instance ownership and actual absence of paused overlay windows.

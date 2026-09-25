@@ -64,7 +64,7 @@ Compile `HDRFixture.swift` as a test-only AppKit executable, then pass an absolu
 
 Physical observer feedback establishes whether bright patches remain distinct; an SDR screenshot cannot. Current headroom of 1 is inconclusive for HDR, even when potential headroom is greater. Power mode, content visibility and the display preset can affect it. Record those limitations instead of calling capability a pass.
 
-## 0.5 workflow checks
+## Workflow checks
 
 ```sh
 python3 Tests/native_display/workflows.py --app dist/Paper.app --evidence outputs/Paper-workflows.json

@@ -2,6 +2,8 @@
 
 Reviewed the live [Deckle issues](https://github.com/YellowFoxH4XOR/deckle/issues) and [pull requests](https://github.com/YellowFoxH4XOR/deckle/pulls) through GitHub's API, including the relevant proposed patches. The live API showed eight open issues and fourteen open PRs. Cached HTML still showed issue 27 as open; the API confirms it is closed. Open proposals are not treated as merged or tested upstream changes.
 
+Current 1.0 dependency: Platform `fa7a8b3310819ce7d2c29f18b481966805bf2d1c`, desktop 0.2.0, test-core 0.3.1, release-core 0.5.0 and Sparkle 2.10.0. See [the exact manifest](../platform-desktop.json) and [migration](SHARED_DESKTOP_MIGRATION.md). The review and earlier version notes below are historical.
+
 Paper uses Deckle revision `cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91`. It vendors the renderer and preset file unchanged and extracts only CustomPaper plus its preset conversion from PaperMill. A manifest records exact file hashes. Record is referenced at `3f687d9131f13e3bfc309653a187f97acf911bc2`; its login adapter has one default-initialization adaptation for Swift 5 language mode. The initial review used Platform `0affb6c5652611b87947bd87762d8aa17d35ea32`. Paper 0.4.0 pins published revision `2054aaec3264393390577c70cb0a084a256a835c`, with test-core 0.3.1, release-core 0.4.0, the test-only display fixture 0.1.0, and the separate desktop update/diagnostics package 0.1.0. The latter reuses Record and Auto Subtitle patterns without linking the speech/AI package.
 
 | Issue or PR | Decision in Paper |

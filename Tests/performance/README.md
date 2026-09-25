@@ -37,7 +37,7 @@ cache-hit benchmark does not prove app responsiveness under every workload.
 
 ## Prepared whole-device discharge run
 
-This remains physical qualification, deferred by the user for the 0.5.0 build.
+This remains physical qualification, deferred by the user for the 1.0 release.
 Quit ordinary Paper instances, unplug power, fix brightness/power mode, close
 background work and keep the desktop awake without changing those settings
 between phases. The runner refuses AC power and observes raw battery capacity;

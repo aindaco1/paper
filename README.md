@@ -2,6 +2,8 @@
 
 A small, free, open-source paper-texture overlay for Apple Silicon Macs running macOS 13 or later.
 
+[Download Paper 1.0](https://github.com/aindaco1/paper/releases/tag/v1.0.0). Open the DMG and drag Paper to Applications. Existing updater-enabled installations can use **Check for Updates…**. Settings and the local library are preserved. See the [release notes](docs/releases/1.0.0.md) and [validation limits](docs/roadmap.md#validation-still-requiring-physical-conditions).
+
 Paper includes all 26 textures in the pinned Deckle catalog, favorites, saved looks, intensity and grain controls, menu-bar snooze, per-display intensity, selected-app rules and exclusions, fixed-time or solar schedules, automatic day/night looks, library backup, native Shortcuts actions, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The default toggle shortcut is **Shift–Option–Command–P**, editable in Settings. Launch at login is optional.
 
 **Soft Wove** is the default for new installations and appears first in the picker. All quiet-reading, material, tinted, dark and Spectral+ papers are available. Existing selections are preserved when updating; missing or removed imported selections fall back to Soft Wove. The catalog comes directly from the pinned Deckle source, without a separate list of selected IDs.
@@ -32,7 +34,7 @@ Global shortcuts can be customized for toggle, 15-minute snooze, next favorite, 
 
 An optional **low-battery threshold** pauses at or below the chosen percentage while unplugged. Connecting power or rising above it resumes only if the other rules permit. Unknown battery capacity does not trigger this rule. Desktop Macs can leave it off.
 
-Paper allows one instance per user: opening another current-version copy brings the existing Settings forward. Its local lock is released on normal exit or a crash. Quit any pre-0.5 copy before manually trying a new build.
+Paper allows one instance per user: opening another current-version copy brings the existing Settings forward. Its local lock is released on normal exit or a crash. Quit any pre-1.0 copy before a manual installation; Sparkle handles quitting during an update.
 
 Each display can use the global intensity or its own optional override. Overrides are keyed by display identity and persist when it disconnects. Disable **Custom intensity** to return to the global value. **Only show in selected apps** waits for an included foreground app; an empty list shows no texture. Exclusions still win. Opening Paper's controls preserves the underlying app rule.
 

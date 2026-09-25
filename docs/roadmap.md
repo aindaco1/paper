@@ -1,6 +1,6 @@
 # Roadmap
 
-## Implemented in the local 0.5.0 build
+## Implemented for 1.0
 
 The remaining feature backlog and all four subsequently approved ideas are implemented:
 
@@ -26,9 +26,9 @@ Existing: all 26 Deckle textures, Soft Wove default, favorites/looks, Shortcuts,
 - Whole-device battery discharge: runner prepared; user deferred the idle/unplugged measurement. Prior process-energy measurements are not a battery claim.
 - Genuine App Store and Apple Pay authorization, plus specific third-party sharing/recording tools: require the real provider flow. No purchase, credential entry, security bypass or universal capture guarantee is part of acceptance.
 
-Revision-specific local checks are recorded in `outputs/Paper-0.5.0-validation.md`. Earlier 0.3.0 fullscreen/sleep-wake and 0.4.0 physical HDR/input, public artifact and updater results remain historical evidence, not automatic certification of every later build.
+Revision-specific checks are recorded in [testing](testing.md) and [1.0 release validation](validation/1.0.0.md). Earlier 0.3.0 sleep/wake, 0.4.0 physical HDR/input and 0.5.0 local UI results remain historical evidence, not automatic certification of every later build.
 
-Public release/signing-feed acceptance is a separate release task. The new build is local until then.
+The approved feature backlog is complete. Remaining work is the qualification matrix above; version 1.0 does not imply that every Apple Silicon model, supported macOS version or recording tool has been tested.
 
 ## Scope boundary
 
