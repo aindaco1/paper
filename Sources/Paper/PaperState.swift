@@ -80,12 +80,17 @@ final class PaperState: ObservableObject {
     @Published var settings: PaperSettings { didSet { persist(settings, key: "settings.v1") } }
     @Published private(set) var customPapers: [CustomPaper]
     @Published private(set) var library: PaperLibrary
+    @Published private(set) var deskProfiles: [DeskProfile] = []
+    @Published private(set) var activeDeskName: String?
+    private var lastDisplayIDs: Set<String>?
     @Published var comparing = false
     @Published var showingCustomSnooze = false
     @Published var alert: PaperAlert?
     @Published var now = Date()
     @Published var onBattery = false
     @Published var lowPower = false
+    @Published var batteryPercentage: Int?
+    @Published var darkAppearance = false
     @Published var frontmostBundleID: String?
     @Published var excludedPanelLevels: [Int] = []
     @Published var displayChoices: [DisplayChoice] = []
@@ -135,6 +140,9 @@ final class PaperState: ObservableObject {
         customPapers = collection.papers
         library = collection.library
         settings.normalize()
+        do {
+            deskProfiles = Array((try persistence.load([DeskProfile].self, key: "desks.v1") ?? []).prefix(8))
+        } catch { errors.append("Desk profiles could not be read.") }
         normalizeAutomaticLooks()
         if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
         if !errors.isEmpty {
@@ -151,14 +159,19 @@ final class PaperState: ObservableObject {
     var automaticLook: PaperLook? {
         guard [settings.automaticLooks.dayLookID, settings.automaticLooks.nightLookID].allSatisfy({ id in
             library.looks.contains { $0.id == id }
-        }), let id = settings.automaticLooks.lookID(at: now, location: settings.schedule.location),
+        }), let id = settings.automaticLooks.lookID(at: now, location: settings.schedule.location, darkAppearance: darkAppearance),
               let look = library.looks.first(where: { $0.id == id }),
               allTextures.contains(where: { $0.id == look.textureID }) else { return nil }
         return look
     }
+    var appLook: PaperLook? {
+        guard settings.appLooksEnabled, let app = frontmostBundleID, let id = settings.appLooks[app] else { return nil }
+        return library.looks.first { look in look.id == id && allTextures.contains(where: { $0.id == look.textureID }) }
+    }
+    var activeLook: PaperLook? { appLook ?? automaticLook }
     var appearance: PaperSettings {
         var value = settings
-        automaticLook?.apply(to: &value)
+        activeLook?.apply(to: &value)
         return value
     }
     var texture: TexturePreset { allTextures.first { $0.id == appearance.textureID } ?? Self.defaultTexture }
@@ -170,12 +183,14 @@ final class PaperState: ObservableObject {
     var status: String {
         switch pauseReason {
         case .disabled: return "Paper is off"
+        case .presentation: return "Paused for presentation"
         case .displayExcluded: return "Display is excluded"
         case .comparing: return "Comparing with your original screen"
         case .snoozed: return "Snoozed until \(settings.snoozeUntil?.formatted(date: .omitted, time: .shortened) ?? "later")"
         case .applicationExcluded: return "Paused for an excluded app"
         case .applicationNotIncluded: return "Waiting for a selected app"
         case .battery: return "Paused on battery"
+        case .lowBattery: return "Paused for low battery"
         case .lowPower: return "Paused in Low Power Mode"
         case .outsideSchedule:
             return settings.schedule.mode != .fixed && settings.schedule.location?.isValid != true
@@ -191,7 +206,7 @@ final class PaperState: ObservableObject {
     func reason(for display: String?) -> PauseReason? {
         OverlayPolicy.pauseReason(settings: settings, displayID: display,
             frontmostBundleID: frontmostBundleID, onBattery: onBattery, lowPower: lowPower,
-            comparing: comparing, now: now)
+            batteryPercentage: batteryPercentage, comparing: comparing, now: now)
     }
     func toggle() {
         record(.toggled)
@@ -204,8 +219,68 @@ final class PaperState: ObservableObject {
     }
     func selectTexture(_ id: String) throws {
         guard allTextures.contains(where: { $0.id == id }) else { throw PaperActionError.missingTexture }
-        settings.automaticLooks.enabled = false
-        settings.textureID = id
+        var updated = settings
+        updated.textureIntensities[settings.textureID] = settings.intensity
+        updated.automaticLooks.enabled = false
+        updated.appLooksEnabled = false
+        updated.textureID = id
+        updated.intensity = updated.textureIntensities[id] ?? settings.intensity
+        settings = updated
+    }
+    func nextFavorite() {
+        let favorites = favoriteTextures
+        guard !favorites.isEmpty else { return }
+        let index = favorites.firstIndex { $0.id == texture.id }.map { ($0 + 1) % favorites.count } ?? 0
+        try? selectTexture(favorites[index].id)
+    }
+    func perform(_ action: ShortcutAction) {
+        switch action {
+        case .toggle: toggle()
+        case .snooze: snooze(minutes: 15)
+        case .nextFavorite: nextFavorite()
+        case .readingUp: stateStripMove(up: true)
+        case .readingDown: stateStripMove(up: false)
+        case .presentation: settings.presentationPaused.toggle()
+        }
+    }
+    private func stateStripMove(up: Bool) {
+        guard settings.readingStrip.enabled else { return }
+        settings.readingStrip.move(up: up)
+    }
+    func displaysChanged(_ choices: [DisplayChoice]) {
+        displayChoices = choices
+        let ids = Set(choices.map(\.id))
+        guard !ids.isEmpty, lastDisplayIDs != ids else { return }
+        lastDisplayIDs = ids
+        guard let profile = deskProfiles.first(where: { $0.displayIDs == ids }) else {
+            activeDeskName = nil; return
+        }
+        settings = profile.applying(to: settings)
+        normalizeAutomaticLooks()
+        if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
+        activeDeskName = profile.name
+    }
+    func saveDesk(name: String) throws {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 60, !name.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
+              !displayChoices.isEmpty else { throw PaperActionError.invalidName }
+        let ids = Set(displayChoices.map(\.id))
+        var profiles = deskProfiles
+        let profile = DeskProfile(name: name, displayIDs: ids, settings: settings)
+        if let index = profiles.firstIndex(where: { $0.displayIDs == ids }) { profiles[index] = profile }
+        else { guard profiles.count < 8 else { throw PaperActionError.tooManyDesks }; profiles.append(profile) }
+        try persistence.save(profiles, key: "desks.v1")
+        deskProfiles = profiles
+        activeDeskName = name
+    }
+    func removeDesk(_ id: UUID) {
+        var profiles = deskProfiles
+        profiles.removeAll { $0.id == id }
+        do {
+            try persistence.save(profiles, key: "desks.v1")
+            deskProfiles = profiles
+            activeDeskName = profiles.first { $0.displayIDs == Set(displayChoices.map(\.id)) }?.name
+        } catch { showError("Could not remove desk profile", error) }
     }
     func toggleFavorite() {
         var updated = library
@@ -231,8 +306,12 @@ final class PaperState: ObservableObject {
     func applyLook(_ id: UUID) throws {
         guard let look = library.looks.first(where: { $0.id == id }) else { throw PaperActionError.missingLook }
         guard allTextures.contains(where: { $0.id == look.textureID }) else { throw PaperActionError.missingTexture }
-        settings.automaticLooks.enabled = false
-        look.apply(to: &settings)
+        var updated = settings
+        updated.textureIntensities[settings.textureID] = settings.intensity
+        updated.automaticLooks.enabled = false
+        updated.appLooksEnabled = false
+        look.apply(to: &updated)
+        settings = updated
     }
     func removeLook(_ id: UUID) {
         var updated = library
@@ -290,7 +369,7 @@ final class PaperState: ObservableObject {
         }
         do {
             try saveCollection(PaperCollection(papers: papers, library: library))
-            if let selected { settings.textureID = selected }
+            if let selected { try selectTexture(selected) }
         } catch { failures.append(error.localizedDescription) }
         if !failures.isEmpty { alert = PaperAlert(title: "Some papers could not be imported", message: failures.joined(separator: "\n\n")) }
     }
@@ -302,6 +381,7 @@ final class PaperState: ObservableObject {
             updated.removeTexture(removedID)
             try saveCollection(PaperCollection(papers: remaining, library: updated))
             settings.textureID = Self.defaultTexture.id
+            settings.textureIntensities.removeValue(forKey: removedID)
         } catch { showError("Could not remove paper", error) }
     }
     func addExcludedApp(url: URL, included: Bool = false) {
@@ -324,6 +404,8 @@ final class PaperState: ObservableObject {
         if let id = automatic.dayLookID, !ids.contains(id) { automatic.dayLookID = nil }
         if let id = automatic.nightLookID, !ids.contains(id) { automatic.nightLookID = nil }
         if automatic != settings.automaticLooks { settings.automaticLooks = automatic }
+        let validAppLooks = settings.appLooks.filter { ids.contains($0.value) }
+        if validAppLooks != settings.appLooks { settings.appLooks = validAppLooks }
     }
     private func saveCollection(_ value: PaperCollection) throws {
         try PaperArchive.validate(value)
@@ -348,13 +430,14 @@ final class PaperState: ObservableObject {
 }
 
 enum PaperActionError: LocalizedError {
-    case missingTexture, missingLook, invalidName, tooManyLooks, invalidDuration
+    case missingTexture, missingLook, invalidName, tooManyLooks, tooManyDesks, invalidDuration
     var errorDescription: String? {
         switch self {
         case .missingTexture: return "This texture is no longer available. Choose another paper."
         case .missingLook: return "This saved look is no longer available."
         case .invalidName: return "Give this look a name between 1 and 60 characters."
         case .tooManyLooks: return "You can save up to eight looks. Remove one or reuse an existing name to replace it."
+        case .tooManyDesks: return "You can save up to eight desk profiles. Remove one first."
         case .invalidDuration: return "Choose a whole number of minutes between 1 and 1,440."
         }
     }

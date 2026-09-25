@@ -34,3 +34,23 @@ dist/test-tools/RendererBenchmark outputs/Paper-renderer-benchmark.json
 Use `swift test` for the existing bounded-cache stress and byte-fidelity tests.
 Do not add unstable timing thresholds to correctness tests. A cold render or a
 cache-hit benchmark does not prove app responsiveness under every workload.
+
+## Prepared whole-device discharge run
+
+This remains physical qualification, deferred by the user for the 0.5.0 build.
+Quit ordinary Paper instances, unplug power, fix brightness/power mode, close
+background work and keep the desktop awake without changing those settings
+between phases. The runner refuses AC power and observes raw battery capacity;
+it does not request administrator access or alter power settings.
+
+```sh
+python3 Tests/performance/battery.py --app outputs/Paper.app --phase-seconds 600 --evidence outputs/Paper-battery-discharge.json
+```
+
+Four phases use off/on/on/off order with 30 seconds of settling each. Minimum
+450 seconds per phase means at least 32 minutes total; default is 42 minutes.
+Samples remain local and intentionally omit battery serial/identity. Repeat on
+another day with comparable conditions; tiny capacity differences, changing
+workload/temperature or sleep make the result inconclusive. Process counters and
+whole-device discharge measure different things; neither alone isolates the
+texture compositor's energy cost.

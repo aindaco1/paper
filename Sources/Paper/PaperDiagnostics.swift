@@ -30,10 +30,10 @@ struct PaperDiagnosticReport: Codable {
         case .disabled: pause = "disabled"
         case .displayExcluded: pause = "display_excluded"
         case .comparing: pause = "comparing"
-        case .snoozed: pause = "snoozed"
+        case .snoozed, .presentation: pause = "snoozed" // Keep the deployed v1 relay contract.
         case .applicationExcluded: pause = "app_excluded"
         case .applicationNotIncluded: pause = "app_not_included"
-        case .battery: pause = "battery"
+        case .battery, .lowBattery: pause = "battery"
         case .lowPower: pause = "low_power"
         case .outsideSchedule: pause = "schedule"
         case nil: pause = "none"

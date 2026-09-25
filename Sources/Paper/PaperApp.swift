@@ -11,6 +11,17 @@ enum PaperApp {
     @MainActor static func main() {
         let application = NSApplication.shared
         let delegate = PaperAppDelegate()
+        do {
+            let instance = try SingleInstance()
+            guard try instance.acquire(onReopen: { delegate.reopen() }) else { return }
+            delegate.instance = instance
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Paper could not safely start"
+            alert.informativeText = "The local instance lock is unavailable. Quit other copies of Paper and try again."
+            alert.runModal()
+            return
+        }
         application.delegate = delegate
         application.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { application.run() }
@@ -19,6 +30,8 @@ enum PaperApp {
 
 @MainActor
 final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
+    var instance: SingleInstance?
+    private var reopenRequested = false
     private var state: PaperState!
     private var overlay: OverlayController!
     private var environment: SystemEnvironment!
@@ -32,6 +45,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private let shortcut = GlobalShortcut()
     private var subscription: AnyCancellable?
     private var priorShortcutEnabled: Bool?
+    private var priorShortcuts: ShortcutSettings?
     private var previousSettings: PaperCoreSettingsSnapshot?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -55,7 +69,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         menu.autoenablesItems = false
         statusItem.menu = menu
         installMainMenu()
-        shortcut.onToggle = { [weak self] in self?.state.toggle() }
+        shortcut.onAction = { [weak self] in self?.state.perform($0) }
         subscription = state.objectWillChange.sink { [weak self] in
             DispatchQueue.main.async { self?.synchronize() }
         }
@@ -65,17 +79,18 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         synchronize()
         PaperShortcuts.updateAppShortcutParameters()
         // Explicit background launches omit the controls; reopening always shows them.
-        if !launchedAtLogin && !ProcessInfo.processInfo.arguments.contains("--background") { showSettings() }
+        if reopenRequested || (!launchedAtLogin && !ProcessInfo.processInfo.arguments.contains("--background")) { showSettings() }
         updates.checkOnLaunch()
     }
 
     private func synchronize() {
         let enabled = state.settings.shortcutEnabled
-        if priorShortcutEnabled != enabled {
+        if priorShortcutEnabled != enabled || priorShortcuts != state.settings.shortcuts {
             priorShortcutEnabled = enabled
-            let status = shortcut.setEnabled(enabled)
-            if status != 0 { state.record(.shortcutUnavailable) }
-            state.shortcutError = status == 0 ? nil : "The shortcut is unavailable (\(status)). Use the menu bar, or turn it off here."
+            priorShortcuts = state.settings.shortcuts
+            let error = shortcut.configure(enabled: enabled, settings: state.settings.shortcuts)
+            if error != nil { state.record(.shortcutUnavailable) }
+            state.shortcutError = error
         }
         let schedule = PaperCoreSettingsSnapshot(state: state)
         if previousSettings != schedule { previousSettings = schedule; state.scheduleBoundary() }
@@ -109,6 +124,21 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         snoozeMenu.items.last?.isEnabled = state.settings.enabled
         snoozeItem.submenu = snoozeMenu
         menu.addItem(snoozeItem)
+        addItem(state.settings.presentationPaused ? "End presentation pause" : "Pause for presentation", action: #selector(togglePresentation), to: menu)
+        addItem(state.settings.readingStrip.enabled ? "Hide reading strip" : "Show reading strip", action: #selector(toggleReadingStrip), to: menu)
+        if !state.favoriteTextures.isEmpty {
+            let item = NSMenuItem(title: "Favorites", action: nil, keyEquivalent: "")
+            let favorites = NSMenu()
+            favorites.autoenablesItems = false
+            for texture in state.favoriteTextures {
+                let option = NSMenuItem(title: texture.name, action: #selector(selectFavorite(_:)), keyEquivalent: "")
+                option.target = self; option.representedObject = texture.id
+                option.state = state.texture.id == texture.id ? .on : .off
+                favorites.addItem(option)
+            }
+            item.submenu = favorites; menu.addItem(item)
+        }
+        menu.addItem(.separator())
         addItem("Settings…", action: #selector(showSettings), to: menu, key: ",")
         addItem("Check for Updates…", action: #selector(checkForUpdates), to: menu)
         menu.items.last?.isEnabled = updates.canCheckForUpdates && !updates.busy
@@ -136,6 +166,11 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         diagnosticsWindow?.makeKeyAndOrderFront(nil)
     }
     @objc private func togglePaper() { state.toggle() }
+    @objc private func togglePresentation() { state.settings.presentationPaused.toggle() }
+    @objc private func toggleReadingStrip() { state.settings.readingStrip.enabled.toggle() }
+    @objc private func selectFavorite(_ sender: NSMenuItem) {
+        if let id = sender.representedObject as? String { try? state.selectTexture(id) }
+    }
     @objc private func snooze(_ sender: NSMenuItem) {
         guard let option = SnoozeOption(rawValue: sender.tag) else { return }
         state.snooze(option)
@@ -167,7 +202,11 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         state.showingCustomSnooze = false
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showSettings(); return true
+        reopen(); return true
+    }
+    func reopen() {
+        guard state != nil else { reopenRequested = true; return }
+        showSettings()
     }
     func applicationWillTerminate(_ notification: Notification) {
         state.record(.cleanQuit)

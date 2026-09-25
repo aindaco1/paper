@@ -2,11 +2,11 @@
 
 A small, free, open-source paper-texture overlay for Apple Silicon Macs running macOS 13 or later.
 
-Paper includes all 26 textures in the pinned Deckle catalog, favorites, saved looks, intensity and grain controls, menu-bar snooze, per-display intensity, selected-app rules and exclusions, fixed-time or solar schedules, automatic day/night looks, library backup, native Shortcuts actions, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The menu-bar shortcut is **Shift–Option–Command–P**. Launch at login is optional.
+Paper includes all 26 textures in the pinned Deckle catalog, favorites, saved looks, intensity and grain controls, menu-bar snooze, per-display intensity, selected-app rules and exclusions, fixed-time or solar schedules, automatic day/night looks, library backup, native Shortcuts actions, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The default toggle shortcut is **Shift–Option–Command–P**, editable in Settings. Launch at login is optional.
 
 **Soft Wove** is the default for new installations and appears first in the picker. All quiet-reading, material, tinted, dark and Spectral+ papers are available. Existing selections are preserved when updating; missing or removed imported selections fall back to Soft Wove. The catalog comes directly from the pinned Deckle source, without a separate list of selected IDs.
 
-Open Paper to show settings. Close the settings window to leave the effect running. Use its menu-bar icon to toggle, snooze or quit. Snoozing, excluded apps/displays, battery rules and schedules never override the master off switch.
+Open Paper to show settings. Close the settings window to leave the effect running. Use its menu-bar icon for immediate actions: toggle, snooze, favorite textures, reading-strip on/off, presentation pause or quit. Settings contains configuration rather than duplicate action controls. Snoozing, excluded apps/displays, battery rules and schedules never override the master off switch.
 
 App exclusions pause Paper when that app is active. Nonactivating floating panels, such as Atoll’s notch UI, stay above the texture while ordinary windows remain textured. Paper briefly checks public window metadata while an excluded app is running and an overlay can be visible; it does not use screenshots, window titles or Accessibility permission. Normal stacking returns when those panels close.
 
@@ -14,11 +14,25 @@ The menu-bar Snooze menu offers 15/30/60/120 minutes, **Until tomorrow at 6 AM**
 
 The fixed-time schedule uses the Mac's local time, supports overnight windows, includes the start time and excludes the end time. Equal start/end times mean all day. Nonexistent daylight-saving times advance to the next valid time; repeated times use the first occurrence. A one-shot timer and wake/timezone notifications update the effect without polling.
 
-Favorite papers appear first in the texture picker. **Saved looks** keeps up to eight named combinations of texture, intensity and grain. Saving an existing name replaces that look while preserving its Shortcuts identity. Applying a look never enables Paper or changes snooze, schedules, power rules or exclusions. Removing a custom paper also removes its favorites and saved looks.
+Favorite papers appear first in the texture picker and in the menu’s Favorites submenu. Manual texture selection recalls its last intensity; display overrides remain independent. **Saved looks** keeps up to eight named combinations of texture, intensity and grain. Saving an existing name replaces that look while preserving its Shortcuts identity. Applying a look never enables Paper or changes snooze, schedules, power rules or exclusions. Removing a custom paper also removes its favorites and saved looks.
 
 Solar schedules offer **Sunset to sunrise** and **Sunrise to sunset**. Choose a city; lookup uses Apple's geocoding service without device-location permission. Approximate times are calculated locally with NOAA's solar equations in the city's time zone. The city stays fixed when you travel. Missing/invalid cities pause the overlay; polar day/night is handled explicitly and rechecked daily. Clear a city from the city sheet.
 
-**Automatic day/night looks** applies two saved looks at sunrise and sunset using the same city as solar scheduling. It changes appearance only; off, snooze and every visibility rule retain priority. Missing city or look selections leave the manual appearance in place. Choosing a texture or applying a saved look ends automatic switching. Display intensity overrides remain in force through look changes.
+**Automatic day/night looks** applies two saved looks either at sunrise/sunset or with macOS light/dark appearance. The solar option uses the same city as solar scheduling; system appearance needs no city. It changes appearance only; off, snooze and every visibility rule retain priority. Missing solar city or look selections leave the manual appearance in place. Choosing a texture or applying a saved look ends automatic switching. Display intensity overrides remain in force through look changes.
+
+**App-specific looks** assigns existing saved looks to applications. An app assignment takes precedence over automatic day/night switching; exclusions and all visibility rules still win. Opening Paper keeps the underlying foreground app. Selecting a texture or applying a look manually disables both automatic switching modes; re-enable them in Settings when wanted.
+
+**Desk profiles** saves up to eight local setups keyed to the exact connected display identities. Save the current texture, lighting, strip, app/schedule/power rules and intensity overrides; reconnecting that setup or launching Paper recalls it. Saving the same setup replaces its profile. Master off, display exclusions, snooze, presentation pause and shortcuts remain global. Edits are saved to a desk only with **Save this setup**. Profiles and app assignments stay local and are not included in library exports.
+
+**Reading strip** leaves a clear horizontal band through the texture and lighting on every enabled display. Toggle it in the menu; configure its height/position in Settings and optionally assign up/down shortcuts. It does not follow the pointer or inspect screen contents. **Desk Lamp** is an optional static warm wash, blended with the same intensity and governed by the same pause rules. Neither effect animates or changes hardware color settings.
+
+**Pause for presentation** in the menu removes overlays until **End presentation pause**, including across relaunches. A timed snooze expiring or toggling Paper does not end this explicit pause. Use it before sharing, capturing or entering protected authorization UI; Paper does not detect meetings or promise capture invisibility.
+
+Global shortcuts can be customized for toggle, 15-minute snooze, next favorite, strip up/down and presentation pause. Optional commands start unassigned. Bindings use physical A–Z keys with Command or Control; conflicts are reported per action without disabling other bindings. Standard menu/app shortcuts may also use a combination, so test your chosen keys in the apps you use.
+
+An optional **low-battery threshold** pauses at or below the chosen percentage while unplugged. Connecting power or rising above it resumes only if the other rules permit. Unknown battery capacity does not trigger this rule. Desktop Macs can leave it off.
+
+Paper allows one instance per user: opening another current-version copy brings the existing Settings forward. Its local lock is released on normal exit or a crash. Quit any pre-0.5 copy before manually trying a new build.
 
 Each display can use the global intensity or its own optional override. Overrides are keyed by display identity and persist when it disconnects. Disable **Custom intensity** to return to the global value. **Only show in selected apps** waits for an included foreground app; an empty list shows no texture. Exclusions still win. Opening Paper's controls preserves the underlying app rule.
 

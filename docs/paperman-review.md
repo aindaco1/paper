@@ -15,3 +15,9 @@ Paper covers the central use case: generated textures, intensity/grain, click-th
 | Desk Lamp, transition effects and sound | Paperman advertises ambient lighting and animations. They do not close a core texture-overlay gap. | Optional exploration only. Keep the static, low-energy renderer as the default; do not copy proprietary artwork or names. |
 
 The most important gaps are operational reliability and capture/protected-UI compatibility, followed by appearance-aware looks and configurable keys. No new feature above is implemented by this review. Other Apple Silicon models, older supported macOS versions, external HDR panels/docks and whole-device battery measurements remain qualification work, not established compatibility.
+
+## 0.5.0 follow-through
+
+The local build implements the four identified product priorities and the approved smaller enhancements: instance ownership, system appearance, configurable shortcuts, texture-intensity recall, battery threshold, favorites in the menu and static ambient lighting. Pausing now closes/discards overlay windows. Provider-specific authorization/capture acceptance remains distinct from this implementation.
+
+Four further workflows were not described in the reviewed [app-exceptions help](https://paperman.cc/help/app-exceptions) or [public changelog](https://paperman.cc/changelog): app-specific saved looks, connected-display desk profiles, a shortcut-adjustable clear reading strip, and persistent presentation pause. The user approved all four for this build. This is a public-document comparison, not proof of absence from unpublished Paperman builds.

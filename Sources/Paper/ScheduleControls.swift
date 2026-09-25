@@ -103,18 +103,22 @@ struct AutomaticLooksControls: View {
     var body: some View {
         Toggle("Automatic day/night looks", isOn: $state.settings.automaticLooks.enabled)
         if state.settings.automaticLooks.enabled {
-            Picker("Day look", selection: $state.settings.automaticLooks.dayLookID) {
+            Picker("Switch with", selection: $state.settings.automaticLooks.trigger) {
+                Text("Sunrise and sunset").tag(AutomaticLooks.Trigger.solar)
+                Text("macOS appearance").tag(AutomaticLooks.Trigger.systemAppearance)
+            }
+            Picker(state.settings.automaticLooks.trigger == .solar ? "Day look" : "Light look", selection: $state.settings.automaticLooks.dayLookID) {
                 Text("Choose a saved look").tag(UUID?.none)
                 ForEach(state.library.looks) { Text($0.name).tag(Optional($0.id)) }
             }
-            Picker("Night look", selection: $state.settings.automaticLooks.nightLookID) {
+            Picker(state.settings.automaticLooks.trigger == .solar ? "Night look" : "Dark look", selection: $state.settings.automaticLooks.nightLookID) {
                 Text("Choose a saved look").tag(UUID?.none)
                 ForEach(state.library.looks) { Text($0.name).tag(Optional($0.id)) }
             }
-            if !state.settings.schedule.enabled || state.settings.schedule.mode == .fixed {
+            if state.settings.automaticLooks.trigger == .solar && (!state.settings.schedule.enabled || state.settings.schedule.mode == .fixed) {
                 SolarScheduleControls(state: state)
             }
-            Text("Uses sunrise and sunset in the selected city. Save looks in Your paper first. Manual selection or applying a look ends automatic switching.")
+            Text("Save looks in Your paper first. Manual selection or applying a look ends automatic switching. Visibility rules still apply.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

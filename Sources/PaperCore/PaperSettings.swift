@@ -82,6 +82,14 @@ public struct PaperSettings: Codable, Equatable {
     public var pauseOnBattery = false
     public var pauseOnLowPower = false
     public var shortcutEnabled = true
+    public var shortcuts = ShortcutSettings()
+    public var lowBatteryThreshold: Int?
+    public var textureIntensities: [String: Double] = [:]
+    public var deskLamp = DeskLamp()
+    public var readingStrip = ReadingStrip()
+    public var presentationPaused = false
+    public var appLooksEnabled = false
+    public var appLooks: [String: UUID] = [:]
     public var disabledDisplays: Set<String> = []
     public var excludedApps: [AppExclusion] = []
     public var appRuleMode: AppRuleMode = .except
@@ -96,7 +104,9 @@ public struct PaperSettings: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case enabled, textureID, intensity, grainScale, grainStrength, pauseOnBattery, pauseOnLowPower,
              shortcutEnabled, disabledDisplays, excludedApps, schedule, snoozeUntil,
-             appRuleMode, includedApps, displayIntensities, automaticLooks
+             appRuleMode, includedApps, displayIntensities, automaticLooks,
+             shortcuts, lowBatteryThreshold, textureIntensities, deskLamp,
+             readingStrip, presentationPaused, appLooksEnabled, appLooks
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -109,6 +119,14 @@ public struct PaperSettings: Codable, Equatable {
         pauseOnBattery = try v.decodeIfPresent(Bool.self, forKey: .pauseOnBattery) ?? pauseOnBattery
         pauseOnLowPower = try v.decodeIfPresent(Bool.self, forKey: .pauseOnLowPower) ?? pauseOnLowPower
         shortcutEnabled = try v.decodeIfPresent(Bool.self, forKey: .shortcutEnabled) ?? shortcutEnabled
+        shortcuts = try v.decodeIfPresent(ShortcutSettings.self, forKey: .shortcuts) ?? .init()
+        lowBatteryThreshold = try v.decodeIfPresent(Int.self, forKey: .lowBatteryThreshold)
+        textureIntensities = try v.decodeIfPresent([String: Double].self, forKey: .textureIntensities) ?? [:]
+        deskLamp = try v.decodeIfPresent(DeskLamp.self, forKey: .deskLamp) ?? .init()
+        readingStrip = try v.decodeIfPresent(ReadingStrip.self, forKey: .readingStrip) ?? .init()
+        presentationPaused = try v.decodeIfPresent(Bool.self, forKey: .presentationPaused) ?? false
+        appLooksEnabled = try v.decodeIfPresent(Bool.self, forKey: .appLooksEnabled) ?? false
+        appLooks = try v.decodeIfPresent([String: UUID].self, forKey: .appLooks) ?? [:]
         disabledDisplays = try v.decodeIfPresent(Set<String>.self, forKey: .disabledDisplays) ?? []
         excludedApps = try v.decodeIfPresent([AppExclusion].self, forKey: .excludedApps) ?? []
         includedApps = try v.decodeIfPresent([AppExclusion].self, forKey: .includedApps) ?? []
@@ -129,13 +147,17 @@ public struct PaperSettings: Codable, Equatable {
         grainScale = [0.5, 1, 2].contains(grainScale) ? grainScale : 1
         grainStrength = grainStrength.isFinite ? min(2, max(0.25, grainStrength)) : 1
         displayIntensities = displayIntensities.filter { $0.value.isFinite }.mapValues { min(0.45, max(0.05, $0)) }
+        textureIntensities = textureIntensities.filter { $0.value.isFinite }.mapValues { min(0.45, max(0.05, $0)) }
+        lowBatteryThreshold = lowBatteryThreshold.map { min(100, max(1, $0)) }
+        deskLamp.normalize()
+        readingStrip.normalize()
         schedule.startMinute = min(1439, max(0, schedule.startMinute))
         schedule.endMinute = min(1439, max(0, schedule.endMinute))
     }
 }
 
 public enum PauseReason: Equatable {
-    case disabled, displayExcluded, comparing, snoozed, applicationExcluded, applicationNotIncluded, battery, lowPower, outsideSchedule
+    case disabled, displayExcluded, comparing, snoozed, presentation, applicationExcluded, applicationNotIncluded, battery, lowBattery, lowPower, outsideSchedule
 }
 
 public enum OverlayPolicy {
@@ -149,10 +171,11 @@ public enum OverlayPolicy {
 
     public static func pauseReason(settings: PaperSettings, displayID: String? = nil,
                                    frontmostBundleID: String? = nil, onBattery: Bool = false,
-                                   lowPower: Bool = false, comparing: Bool = false,
+                                   lowPower: Bool = false, batteryPercentage: Int? = nil, comparing: Bool = false,
                                    now: Date, calendar: Calendar = .current) -> PauseReason? {
         if !settings.enabled { return .disabled }
         if let displayID, settings.disabledDisplays.contains(displayID) { return .displayExcluded }
+        if settings.presentationPaused { return .presentation }
         if comparing { return .comparing }
         if let until = settings.snoozeUntil, until > now { return .snoozed }
         if let id = frontmostBundleID, settings.excludedApps.contains(where: { $0.bundleID == id }) {
@@ -163,6 +186,8 @@ public enum OverlayPolicy {
             return .applicationNotIncluded
         }
         if settings.pauseOnBattery && onBattery { return .battery }
+        if onBattery, let threshold = settings.lowBatteryThreshold, let batteryPercentage,
+           (0...100).contains(batteryPercentage), batteryPercentage <= threshold { return .lowBattery }
         if settings.pauseOnLowPower && lowPower { return .lowPower }
         if !settings.schedule.contains(now, calendar: calendar) { return .outsideSchedule }
         return nil

@@ -57,7 +57,7 @@ final class OverlayController {
             guard let id = screen.paperIdentifier else { return nil }
             return DisplayChoice(id: id, name: screen.localizedName)
         }
-        if state.displayChoices != choices { state.displayChoices = choices; state.record(.displaysChanged) }
+        if state.displayChoices != choices { state.displaysChanged(choices); state.record(.displaysChanged) }
         refresh()
     }
     private func refresh() {
@@ -67,7 +67,7 @@ final class OverlayController {
             connected.insert(id)
             // Do not create/render a window until this display is actually enabled.
             guard sessionActive, !asleep, state.reason(for: id) == nil else {
-                windows[id]?.orderOut(nil)
+                windows.removeValue(forKey: id)?.close()
                 continue
             }
             let window = windows[id] ?? PaperOverlayWindow(screen: screen)
@@ -76,12 +76,13 @@ final class OverlayController {
                 defaultLevel: NSWindow.Level.screenSaver.rawValue, normalLevel: NSWindow.Level.normal.rawValue,
                 excludedPanelLevels: state.excludedPanelLevels))
             if window.frame != screen.frame { window.setFrame(screen.frame, display: false) }
-            window.apply(texture: state.texture, adjustments: state.adjustments)
+            window.apply(texture: state.texture, adjustments: state.adjustments,
+                         lamp: state.settings.deskLamp, strip: state.settings.readingStrip)
             window.alphaValue = state.appearance.intensity(for: id)
             window.orderFrontRegardless()
         }
         for id in Set(windows.keys).subtracting(connected) {
-            windows.removeValue(forKey: id)?.orderOut(nil)
+            windows.removeValue(forKey: id)?.close()
         }
     }
     func stop() {
@@ -91,7 +92,7 @@ final class OverlayController {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         observers.removeAll()
-        for window in windows.values { window.orderOut(nil) }
+        for window in windows.values { window.close() }
         windows.removeAll()
     }
 }
@@ -132,8 +133,9 @@ final class PaperOverlayWindow: NSPanel {
         setAccessibilityElement(false)
         contentView = textureView
     }
-    func apply(texture: TexturePreset, adjustments: TextureRenderer.GrainAdjustments) {
-        textureView.apply(texture: texture, adjustments: adjustments)
+    func apply(texture: TexturePreset, adjustments: TextureRenderer.GrainAdjustments,
+               lamp: DeskLamp = .init(), strip: ReadingStrip = .init()) {
+        textureView.apply(texture: texture, adjustments: adjustments, lamp: lamp, strip: strip)
     }
 }
 
@@ -142,14 +144,28 @@ final class PaperTextureView: NSView {
     private var texture: TexturePreset?
     private var adjustments = TextureRenderer.GrainAdjustments.none
     private var backingScale: CGFloat = 0
+    private let lampLayer = CAGradientLayer()
+    private let stripMask = CAShapeLayer()
+    private var lamp = DeskLamp()
+    private var strip = ReadingStrip()
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layerContentsRedrawPolicy = .never
+        lampLayer.type = .radial
+        lampLayer.startPoint = CGPoint(x: 0.5, y: 1)
+        lampLayer.endPoint = CGPoint(x: 1, y: 0)
+        layer?.addSublayer(lampLayer)
+        stripMask.fillRule = .evenOdd
         setAccessibilityElement(false)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-    func apply(texture: TexturePreset, adjustments: TextureRenderer.GrainAdjustments) {
+    func apply(texture: TexturePreset, adjustments: TextureRenderer.GrainAdjustments,
+               lamp: DeskLamp = .init(), strip: ReadingStrip = .init()) {
+        if self.lamp != lamp || self.strip != strip {
+            self.lamp = lamp; self.strip = strip
+            updateEffects()
+        }
         let scale = window?.backingScaleFactor ?? 2
         guard self.texture != texture || self.adjustments != adjustments || scale != backingScale else { return }
         self.texture = texture
@@ -160,7 +176,25 @@ final class PaperTextureView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         guard let texture else { return }
-        apply(texture: texture, adjustments: adjustments)
+        apply(texture: texture, adjustments: adjustments, lamp: lamp, strip: strip)
+    }
+    override func layout() { super.layout(); updateEffects() }
+    private func updateEffects() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        lampLayer.frame = bounds
+        lampLayer.isHidden = !lamp.enabled
+        let tint = NSColor(srgbRed: 1, green: 0.95 - lamp.warmth * 0.3, blue: 0.8 - lamp.warmth * 0.6, alpha: lamp.strength)
+        lampLayer.colors = [tint.cgColor, tint.withAlphaComponent(0).cgColor]
+        if strip.enabled {
+            let path = CGMutablePath()
+            path.addRect(bounds)
+            path.addRect(CGRect(x: bounds.minX, y: bounds.minY + (strip.center - strip.height / 2) * bounds.height,
+                                width: bounds.width, height: strip.height * bounds.height))
+            stripMask.frame = bounds; stripMask.path = path
+            layer?.mask = stripMask
+        } else { layer?.mask = nil }
+        CATransaction.commit()
     }
     private func render() {
         guard let texture else { return }

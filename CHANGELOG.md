@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 (local build)
+
+- Add system-appearance and app-specific saved looks, display-matched desk profiles, and per-texture intensity recall.
+- Add menu-only presentation pause and reading-strip toggling, favorite selection, configurable shortcuts and conflict feedback.
+- Add static Desk Lamp controls and optional low-battery threshold.
+- Enforce one instance across app copies and discard overlay windows while paused.
+- Extend policy, native workflow and hardware qualification tooling; keep deferred physical checks explicit.
+
 ## 0.4.1
 
 - Simplify Settings: use the main toggle to compare, and keep Snooze in the menu bar.

@@ -42,8 +42,8 @@ struct PaperView: View {
                         }
                     }.accessibilityIdentifier("paper.texture")
                     LibraryControls(state: state)
-                    if state.settings.automaticLooks.enabled {
-                        Text(state.automaticLook.map { "Automatic look: \($0.name)" } ?? "Choose a city and two saved looks to finish setup.")
+                    if state.settings.automaticLooks.enabled || state.settings.appLooksEnabled {
+                        Text(state.activeLook.map { "Automatic look: \($0.name)" } ?? "Choose saved looks and a switching rule to finish setup.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     TextureSample(preset: state.texture, adjustments: state.adjustments, intensity: state.appearance.intensity)
@@ -56,21 +56,22 @@ struct PaperView: View {
                         Text(state.intensityDescription)
                             .monospacedDigit().frame(width: 38).accessibilityHidden(true)
                     }
-                    .disabled(state.settings.automaticLooks.enabled)
+                    .disabled(state.activeLook != nil)
                     Picker("Grain", selection: Binding(get: { state.appearance.grainScale }, set: { state.settings.grainScale = $0 })) {
                         Text("Fine").tag(0.5)
                         Text("Natural").tag(1.0)
                         Text("Coarse").tag(2.0)
-                    }.pickerStyle(.segmented).disabled(state.settings.automaticLooks.enabled)
+                    }.pickerStyle(.segmented).disabled(state.activeLook != nil)
                     HStack {
                         Button("Import paper…", action: importPaper).disabled(choosingFile)
                         Spacer()
                         if state.customPapers.contains(where: { $0.id == state.settings.textureID }) {
                             Button("Remove imported paper", role: .destructive) { state.removeSelectedImport() }
-                                .disabled(state.settings.automaticLooks.enabled)
+                                .disabled(state.activeLook != nil)
                         }
                     }
                 }
+                Section("Surface options") { SurfaceControls(state: state) }
                 Section("When to show it") {
                     Toggle("Use a daily schedule", isOn: $state.settings.schedule.enabled)
                     if state.settings.schedule.enabled {
@@ -91,6 +92,14 @@ struct PaperView: View {
                     AutomaticLooksControls(state: state)
                     Toggle("Pause on battery", isOn: $state.settings.pauseOnBattery)
                     Toggle("Pause in Low Power Mode", isOn: $state.settings.pauseOnLowPower)
+                    Toggle("Pause at low battery", isOn: Binding(get: { state.settings.lowBatteryThreshold != nil },
+                        set: { state.settings.lowBatteryThreshold = $0 ? 20 : nil }))
+                    if state.settings.lowBatteryThreshold != nil {
+                        Stepper("Pause at \(state.settings.lowBatteryThreshold ?? 20)% or below", value: Binding(
+                            get: { state.settings.lowBatteryThreshold ?? 20 }, set: { state.settings.lowBatteryThreshold = $0 }), in: 1...100)
+                        Text("Applies only while running on battery. Resumes above the threshold or when plugged in, if other rules allow.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Section("Displays") {
                     ForEach(state.displayChoices) { display in
@@ -116,6 +125,8 @@ struct PaperView: View {
                         }
                     }
                 }
+                Section("Desk profiles") { DeskControls(state: state) }
+                Section("App-specific looks") { AppLookControls(state: state, choosingFile: choosingFile, chooseApp: chooseApp) }
                 Section("App rules") {
                     Toggle("Only show in selected apps", isOn: Binding(
                         get: { state.settings.appRuleMode == .only },
@@ -174,9 +185,8 @@ struct PaperView: View {
                     }
                     Text("Update checks use GitHub. Reports are sent only after you review them and choose Send.").font(.caption).foregroundStyle(.secondary)
                 }
+                Section("Shortcuts") { ShortcutControls(state: state) }
                 Section("Preferences") {
-                    Toggle("Toggle with ⇧⌥⌘P", isOn: $state.settings.shortcutEnabled)
-                    if let error = state.shortcutError { Text(error).font(.caption).foregroundStyle(.red) }
                     Toggle("Launch at login", isOn: Binding(get: { state.loginState == .enabled }, set: { _ in state.toggleLogin() }))
                         .disabled(state.loginState == .unavailable)
                     if state.loginState == .requiresApproval {
@@ -226,6 +236,9 @@ struct PaperView: View {
         }
     }
     private func addApp(included: Bool = false) {
+        chooseApp { state.addExcludedApp(url: $0, included: included) }
+    }
+    private func chooseApp(_ completion: @escaping (URL) -> Void) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
@@ -233,7 +246,7 @@ struct PaperView: View {
         panel.prompt = "Add app"
         chooseFile(panel) { response in
             guard response == .OK, let url = panel.url else { return }
-            state.addExcludedApp(url: url, included: included)
+            completion(url)
         }
     }
 
