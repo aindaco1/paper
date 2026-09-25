@@ -5,7 +5,10 @@ let package = Package(
     name: "Paper",
     platforms: [.macOS(.v13)],
     products: [.executable(name: "Paper", targets: ["Paper"])],
-    dependencies: [.package(path: "shared/dust-wave-platform/desktop")],
+    dependencies: [
+        .package(path: "shared/dust-wave-platform/desktop"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0")
+    ],
     targets: [
         .target(name: "PaperCore"),
         .executableTarget(name: "Paper", dependencies: ["PaperCore",
@@ -16,4 +19,3 @@ let package = Package(
         .testTarget(name: "PaperTests", dependencies: ["Paper"]),
     ]
 )
-

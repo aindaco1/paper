@@ -1,12 +1,16 @@
 # Changelog
 
-## 0.5.0 (local build)
+## 1.0.0 - 2026-09-25
 
 - Add system-appearance and app-specific saved looks, display-matched desk profiles, and per-texture intensity recall.
 - Add menu-only presentation pause and reading-strip toggling, favorite selection, configurable shortcuts and conflict feedback.
 - Add static Desk Lamp controls and optional low-battery threshold.
 - Enforce one instance across app copies and discard overlay windows while paused.
 - Extend policy, native workflow and hardware qualification tooling; keep deferred physical checks explicit.
+
+## 0.4.2 - 2026-09-25
+
+- Share the existing shared desktop package, advanced to version 0.2.0 through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
 
 ## 0.4.1
 
