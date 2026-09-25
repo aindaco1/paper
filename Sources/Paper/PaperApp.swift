@@ -169,8 +169,10 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 private struct PaperCoreSettingsSnapshot: Equatable {
     let schedule: PaperSchedule
     let snooze: Date?
+    let automaticLooks: AutomaticLooks
     @MainActor init(state: PaperState) {
         schedule = state.settings.schedule
+        automaticLooks = state.settings.automaticLooks
         snooze = state.settings.snoozeUntil
     }
 }

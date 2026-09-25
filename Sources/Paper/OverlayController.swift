@@ -11,6 +11,7 @@ final class OverlayController {
     private var changes: AnyCancellable?
     private var refreshPending = false
     private var sessionActive = true
+    private var asleep = false
 
     init(state: PaperState) { self.state = state }
     func start() {
@@ -23,7 +24,8 @@ final class OverlayController {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) {
                 [weak self] _ in Task { @MainActor in
                     guard let self else { return }
-                    self.sessionActive = true
+                    if name == NSWorkspace.didWakeNotification { self.asleep = false }
+                    if name == NSWorkspace.sessionDidBecomeActiveNotification { self.sessionActive = true }
                     self.state.refreshClock()
                     self.refreshDisplays()
                 }
@@ -32,7 +34,8 @@ final class OverlayController {
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) {
                 [weak self] _ in Task { @MainActor in
-                    self?.sessionActive = false
+                    if name == NSWorkspace.willSleepNotification { self?.asleep = true }
+                    else { self?.sessionActive = false }
                     self?.refresh()
                 }
             })
@@ -63,7 +66,7 @@ final class OverlayController {
             guard let id = screen.paperIdentifier else { continue }
             connected.insert(id)
             // Do not create/render a window until this display is actually enabled.
-            guard sessionActive, state.reason(for: id) == nil else {
+            guard sessionActive, !asleep, state.reason(for: id) == nil else {
                 windows[id]?.orderOut(nil)
                 continue
             }
@@ -74,7 +77,7 @@ final class OverlayController {
                 excludedPanelLevels: state.excludedPanelLevels))
             if window.frame != screen.frame { window.setFrame(screen.frame, display: false) }
             window.apply(texture: state.texture, adjustments: state.adjustments)
-            window.alphaValue = state.settings.intensity
+            window.alphaValue = state.appearance.intensity(for: id)
             window.orderFrontRegardless()
         }
         for id in Set(windows.keys).subtracting(connected) {

@@ -84,22 +84,58 @@ public struct PaperSettings: Codable, Equatable {
     public var shortcutEnabled = true
     public var disabledDisplays: Set<String> = []
     public var excludedApps: [AppExclusion] = []
+    public var appRuleMode: AppRuleMode = .except
+    public var includedApps: [AppExclusion] = []
+    public var displayIntensities: [String: Double] = [:]
+    public var automaticLooks = AutomaticLooks()
     public var schedule = PaperSchedule()
     public var snoozeUntil: Date?
 
     public init() {}
 
+    private enum CodingKeys: String, CodingKey {
+        case enabled, textureID, intensity, grainScale, grainStrength, pauseOnBattery, pauseOnLowPower,
+             shortcutEnabled, disabledDisplays, excludedApps, schedule, snoozeUntil,
+             appRuleMode, includedApps, displayIntensities, automaticLooks
+    }
+    public init(from decoder: Decoder) throws {
+        self.init()
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try v.decodeIfPresent(Bool.self, forKey: .enabled) ?? enabled
+        textureID = try v.decodeIfPresent(String.self, forKey: .textureID) ?? textureID
+        intensity = try v.decodeIfPresent(Double.self, forKey: .intensity) ?? intensity
+        grainScale = try v.decodeIfPresent(Double.self, forKey: .grainScale) ?? grainScale
+        grainStrength = try v.decodeIfPresent(Double.self, forKey: .grainStrength) ?? grainStrength
+        pauseOnBattery = try v.decodeIfPresent(Bool.self, forKey: .pauseOnBattery) ?? pauseOnBattery
+        pauseOnLowPower = try v.decodeIfPresent(Bool.self, forKey: .pauseOnLowPower) ?? pauseOnLowPower
+        shortcutEnabled = try v.decodeIfPresent(Bool.self, forKey: .shortcutEnabled) ?? shortcutEnabled
+        disabledDisplays = try v.decodeIfPresent(Set<String>.self, forKey: .disabledDisplays) ?? []
+        excludedApps = try v.decodeIfPresent([AppExclusion].self, forKey: .excludedApps) ?? []
+        includedApps = try v.decodeIfPresent([AppExclusion].self, forKey: .includedApps) ?? []
+        appRuleMode = try v.decodeIfPresent(AppRuleMode.self, forKey: .appRuleMode) ?? .except
+        displayIntensities = try v.decodeIfPresent([String: Double].self, forKey: .displayIntensities) ?? [:]
+        automaticLooks = try v.decodeIfPresent(AutomaticLooks.self, forKey: .automaticLooks) ?? .init()
+        schedule = try v.decodeIfPresent(PaperSchedule.self, forKey: .schedule) ?? schedule
+        snoozeUntil = try v.decodeIfPresent(Date.self, forKey: .snoozeUntil)
+        normalize()
+    }
+    public func intensity(for displayID: String) -> Double {
+        let value = displayIntensities[displayID] ?? intensity
+        return value.isFinite ? min(0.45, max(0.05, value)) : intensity
+    }
+
     public mutating func normalize() {
         intensity = intensity.isFinite ? min(0.45, max(0.05, intensity)) : 0.22
         grainScale = [0.5, 1, 2].contains(grainScale) ? grainScale : 1
         grainStrength = grainStrength.isFinite ? min(2, max(0.25, grainStrength)) : 1
+        displayIntensities = displayIntensities.filter { $0.value.isFinite }.mapValues { min(0.45, max(0.05, $0)) }
         schedule.startMinute = min(1439, max(0, schedule.startMinute))
         schedule.endMinute = min(1439, max(0, schedule.endMinute))
     }
 }
 
 public enum PauseReason: Equatable {
-    case disabled, displayExcluded, comparing, snoozed, applicationExcluded, battery, lowPower, outsideSchedule
+    case disabled, displayExcluded, comparing, snoozed, applicationExcluded, applicationNotIncluded, battery, lowPower, outsideSchedule
 }
 
 public enum OverlayPolicy {
@@ -122,6 +158,10 @@ public enum OverlayPolicy {
         if let id = frontmostBundleID, settings.excludedApps.contains(where: { $0.bundleID == id }) {
             return .applicationExcluded
         }
+        if settings.appRuleMode == .only,
+           !settings.includedApps.contains(where: { $0.bundleID == frontmostBundleID }) {
+            return .applicationNotIncluded
+        }
         if settings.pauseOnBattery && onBattery { return .battery }
         if settings.pauseOnLowPower && lowPower { return .lowPower }
         if !settings.schedule.contains(now, calendar: calendar) { return .outsideSchedule }
@@ -130,7 +170,8 @@ public enum OverlayPolicy {
 
     public static func nextEvent(settings: PaperSettings, after now: Date,
                                  calendar: Calendar = .current) -> Date? {
-        [settings.snoozeUntil, settings.schedule.nextBoundary(after: now, calendar: calendar)]
+        [settings.snoozeUntil, settings.schedule.nextBoundary(after: now, calendar: calendar),
+         settings.automaticLooks.nextBoundary(after: now, location: settings.schedule.location)]
             .compactMap { $0 }.filter { $0 > now }.min()
     }
 }

@@ -16,8 +16,8 @@ host, so the harness does not rely on it. The suite clears only its own UUID
 domains after terminating its app processes, then verifies that they contain no data.
 macOS may retain empty preferences-domain files. Login preferences are never changed.
 
-Eighteen checks cover 1×/2× monitors, right/left/above positions, non-16:9 geometry,
-all-display coverage, per-display exclusion, manual off, and adding/removing a
+Twenty-three checks cover 1×/2× monitors, right/left/above positions, non-16:9 geometry,
+all-display coverage, per-display exclusion and intensity, selected-app policy, manual off, and adding/removing a
 monitor while Paper runs. A test-only accessory app also checks nonactivating floating
 panels with and without exclusion, plus normal stacking after it quits. Every visible overlay must match a display within one
 logical point, have the expected opacity and window level, and leave the foreground PID unchanged.
@@ -38,3 +38,22 @@ claim that every Apple Silicon Mac is qualified.
 
 This test driver and the OwlSwitch-derived fixture are GPL-3.0; see the fixture's
 LICENSE. They are excluded from Paper.app. The application remains MIT-licensed.
+
+## Fullscreen and real sleep/wake
+
+```sh
+python3 Tests/native_display/fullscreen.py --app dist/Paper.app --evidence outputs/Paper-fullscreen.json
+python3 Tests/native_display/sleep_wake.py --app dist/Paper.app --evidence outputs/Paper-sleep-wake.json --trigger work/sleep-authorized.trigger
+```
+
+The fullscreen fixture activates a real AppKit window and enters/exits native
+fullscreen Spaces, asserting six app cases. It restores the previous foreground
+app and closes its test window. This deliberately changes Spaces during the test.
+
+Sleep testing is disruptive: coordinate a person to wake and unlock the Mac.
+Wait for READY, then create the trigger file only when that person is ready.
+The script observes actual workspace sleep/wake notifications and checks active,
+manual-off and excluded-display cases before and after. `--manual` uses the Apple
+Sleep menu instead of `pmset sleepnow`. A timeout or a host with system sleep
+disabled is a failure/blocker, never a physical pass. Do not change system power
+settings or enable administrator access as an implicit test setup step.

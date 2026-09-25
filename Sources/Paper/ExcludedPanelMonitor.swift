@@ -7,22 +7,18 @@ import PaperCore
 @MainActor
 final class ExcludedPanelMonitor {
     private let state: PaperState
-    private var settings: AnyCancellable?
+    private var changes: AnyCancellable?
+    private var refreshPending = false
     private var observers: [NSObjectProtocol] = []
     private var timer: Timer?
-    private var bundleIDs: Set<String> = []
     private var sessionActive = true
+    private var asleep = false
 
     init(state: PaperState) { self.state = state }
 
     func start() {
-        settings = state.$settings
-            .map { $0.enabled ? Set($0.excludedApps.map(\.bundleID)) : [] }
-            .removeDuplicates()
-            .sink { [weak self] ids in
-                self?.bundleIDs = ids
-                self?.refresh()
-            }
+        changes = state.objectWillChange.sink { [weak self] in self?.scheduleRefresh() }
+        refresh()
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification,
                      NSWorkspace.didHideApplicationNotification, NSWorkspace.didUnhideApplicationNotification,
@@ -36,17 +32,35 @@ final class ExcludedPanelMonitor {
                                (NSWorkspace.didWakeNotification, true),
                                (NSWorkspace.sessionDidBecomeActiveNotification, true)] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.sessionActive = active; self?.refresh() }
+                Task { @MainActor in
+                    if name == NSWorkspace.willSleepNotification || name == NSWorkspace.didWakeNotification {
+                        self?.asleep = !active
+                    } else { self?.sessionActive = active }
+                    self?.refresh()
+                }
             })
         }
     }
 
+    private func scheduleRefresh() {
+        guard !refreshPending else { return }
+        refreshPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.refreshPending = false
+            self.refresh()
+        }
+    }
+
     private func refresh() {
+        let visible = sessionActive && !asleep && state.pauseReason == nil &&
+            state.displayChoices.contains { !state.settings.disabledDisplays.contains($0.id) }
+        let bundleIDs = visible ? Set(state.settings.excludedApps.map(\.bundleID)) : []
         let pids = Set(NSWorkspace.shared.runningApplications.compactMap { app -> pid_t? in
-            guard sessionActive, let id = app.bundleIdentifier, bundleIDs.contains(id), !app.isHidden else { return nil }
+            guard let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier, bundleIDs.contains(id), !app.isHidden else { return nil }
             return app.processIdentifier
         })
-        // No periodic work unless an explicitly excluded app is running.
+        // No periodic work while paused, off, asleep, or without a relevant running app.
         if !pids.isEmpty, timer == nil {
             let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.refresh() }
@@ -70,7 +84,7 @@ final class ExcludedPanelMonitor {
     }
 
     func stop() {
-        settings = nil
+        changes = nil
         timer?.invalidate(); timer = nil
         for observer in observers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         observers.removeAll()

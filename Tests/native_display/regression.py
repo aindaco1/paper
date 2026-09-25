@@ -28,7 +28,7 @@ def overlay_failures(snapshot, screens, front, intensity=0.19, level=1000):
                     [('X', 'x'), ('Y', 'y'), ('Width', 'width'), ('Height', 'height')])]
         if len(matches) != 1:
             failures.append('Overlay does not exactly cover display ' + screen['name'])
-        elif abs(matches[0]['alpha'] - intensity) > 0.01:
+        elif abs(matches[0]['alpha'] - (intensity.get(screen['id'], 0.19) if isinstance(intensity, dict) else intensity)) > 0.01:
             failures.append('Isolated test intensity was not applied')
         elif matches[0]['layer'] != level:
             failures.append('Overlay has the wrong window level')
@@ -65,7 +65,7 @@ class PaperCase:
             raise RuntimeError('Paper exited during native display test')
         return self.tools.window('snapshot', self.process.pid)
 
-    def check(self, screens, front, label, level=1000):
+    def check(self, screens, front, label, level=1000, intensity=0.19):
         # Wait only for creation/readiness, not for geometry/focus assertions to pass.
         if screens:
             wait_for(lambda: any(w['layer'] >= 1 and w['alpha'] > 0 for w in self.snapshot()['windows']),
@@ -74,7 +74,7 @@ class PaperCase:
             time.sleep(0.5)
         time.sleep(0.3)
         snapshot = self.snapshot()
-        failures = overlay_failures(snapshot, screens, front, level=level)
+        failures = overlay_failures(snapshot, screens, front, level=level, intensity=intensity)
         if failures:
             raise AssertionError(label + ': ' + '; '.join(failures) + '; observed ' + json.dumps(snapshot))
         return {'name': label, 'status': 'passed', 'displays': screens, 'windowState': snapshot}
@@ -129,6 +129,27 @@ def run(app, evidence):
                         finally:
                             case.close()
                 print('PASS topology', width,height,scale,origin, flush=True)
+            # Per-display override must affect only its own screen.
+            with tools.display(1440,900,1) as display:
+                preferences = settings()
+                overrides = {display['screen']['id']: 0.37}
+                preferences['displayIntensities'] = overrides
+                case = PaperCase(app, tools, root/'intensities', preferences)
+                try:
+                    report['cases'].append(case.check(display['screens'],front,'per-display intensity',intensity=overrides))
+                finally: case.close()
+            # Selected-app mode is fail-closed; exclusion and manual off still win.
+            front_id = tools.window('snapshot',os.getpid())['frontBundleIdentifier']
+            if not front_id: raise RuntimeError('A foreground app with a bundle ID is required')
+            for selected, excluded, enabled, label in [(False,False,True,'not selected'),
+                    (True,False,True,'selected'),(True,True,True,'selected and excluded'),(True,False,False,'selected but off')]:
+                preferences = settings(enabled)
+                preferences.update(appRuleMode='only', includedApps=[dict(bundleID=front_id,name='Foreground fixture')] if selected else [])
+                if excluded: preferences['excludedApps'] = preferences['includedApps']
+                case = PaperCase(app,tools,root/label,preferences)
+                try:
+                    report['cases'].append(case.check(baseline if selected and not excluded and enabled else [],front,'only-app mode: '+label))
+                finally: case.close()
             # Keep the actual app running while a display attaches and disconnects.
             case = PaperCase(app, tools, root/'hotplug', settings())
             try:

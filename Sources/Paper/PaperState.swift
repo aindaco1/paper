@@ -12,7 +12,7 @@ enum PaperImportError: LocalizedError {
     case tooLarge, tooMany, invalidName, invalidRecipe
     var errorDescription: String? {
         switch self {
-        case .tooLarge: return "Choose a JSON recipe smaller than 1 MB."
+        case .tooLarge: return "Choose a JSON file no larger than 1 MB."
         case .tooMany: return "You can keep up to 50 imported papers. Remove one before importing another."
         case .invalidName: return "This recipe needs a readable paper name."
         case .invalidRecipe: return "Choose a Deckle paper recipe exported as JSON. This file is incomplete, invalid, or uses an unsupported recipe version."
@@ -26,12 +26,21 @@ enum RecipeImport {
         var paper: CustomPaper
         do { paper = try JSONDecoder().decode(CustomPaper.self, from: data) }
         catch is DecodingError { throw PaperImportError.invalidRecipe }
+        paper = try validated(paper)
+        // Decoding derives any legacy seed before assigning a fresh identity.
+        paper.id = "custom-\(UUID().uuidString.lowercased())"
+        return paper
+    }
+    static func validated(_ value: CustomPaper) throws -> CustomPaper {
+        var paper = value
+        let numbers = [paper.tintRed, paper.tintGreen, paper.tintBlue, paper.wash, paper.weave, paper.blotch,
+                       Double(paper.fiberAngle), Double(paper.fiberStrength), Double(paper.surfaceRoughness),
+                       Double(paper.darkGrainStrength ?? 0), Double(paper.lightGrainStrength ?? 0)]
+        guard numbers.allSatisfy(\.isFinite) else { throw PaperImportError.invalidRecipe }
         paper.name = String(paper.name.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) })
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !paper.name.isEmpty else { throw PaperImportError.invalidName }
         paper.name = String(paper.name.prefix(80))
-        // Decoding derives any legacy seed before assigning a fresh identity.
-        paper.id = "custom-\(UUID().uuidString.lowercased())"
         return paper
     }
 }
@@ -43,7 +52,7 @@ struct PaperPersistence {
         guard let bytes = defaults.data(forKey: key) else { return nil }
         do { return try JSONDecoder().decode(type, from: bytes) }
         catch {
-            defaults.set(bytes, forKey: "\(key).corrupt.\(UUID().uuidString)")
+            defaults.set(bytes, forKey: "\(key).corrupt.latest")
             throw error
         }
     }
@@ -89,12 +98,33 @@ final class PaperState: ObservableObject {
         persistence = PaperPersistence(defaults: defaults)
         var errors: [String] = []
         do { settings = try persistence.load(PaperSettings.self, key: "settings.v1") ?? PaperSettings() }
-        catch { settings = PaperSettings(); errors.append("Settings could not be read.") }
-        do { customPapers = try persistence.load([CustomPaper].self, key: "papers.v1") ?? [] }
-        catch { customPapers = []; errors.append("Imported paper recipes could not be read.") }
-        do { library = try persistence.load(PaperLibrary.self, key: "library.v1") ?? PaperLibrary() }
-        catch { library = PaperLibrary(); errors.append("Favorites and saved looks could not be read.") }
+        catch {
+            var recovered = PaperSettings(); recovered.enabled = false
+            settings = recovered
+            errors.append("Settings could not be read. Paper is off until you enable it again.")
+        }
+        let collection: PaperCollection
+        do {
+            if let saved = try persistence.load(PaperCollection.self, key: "collection.v1") {
+                try PaperArchive.validate(saved)
+                collection = saved
+            } else {
+                let legacy = PaperCollection(papers: try persistence.load([CustomPaper].self, key: "papers.v1") ?? [],
+                    library: try persistence.load(PaperLibrary.self, key: "library.v1") ?? PaperLibrary())
+                try PaperArchive.validate(legacy)
+                collection = legacy
+            }
+        } catch {
+            collection = PaperCollection()
+            for key in ["collection.v1", "papers.v1", "library.v1"] {
+                if let bytes = defaults.data(forKey: key) { defaults.set(bytes, forKey: "\(key).corrupt.latest") }
+            }
+            errors.append("Your paper library could not be read.")
+        }
+        customPapers = collection.papers
+        library = collection.library
         settings.normalize()
+        normalizeAutomaticLooks()
         if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
         if !errors.isEmpty {
             alert = PaperAlert(title: "Recovered default settings",
@@ -106,11 +136,24 @@ final class PaperState: ObservableObject {
     var allTextures: [TexturePreset] { Self.builtIns + customPapers.map(TexturePreset.init(custom:)) }
     var favoriteTextures: [TexturePreset] { allTextures.filter { library.favorites.contains($0.id) } }
     var otherTextures: [TexturePreset] { allTextures.filter { !library.favorites.contains($0.id) } }
-    var texture: TexturePreset { allTextures.first { $0.id == settings.textureID } ?? Self.defaultTexture }
-    var adjustments: TextureRenderer.GrainAdjustments {
-        .init(scale: settings.grainScale, strength: settings.grainStrength)
+    var automaticLook: PaperLook? {
+        guard [settings.automaticLooks.dayLookID, settings.automaticLooks.nightLookID].allSatisfy({ id in
+            library.looks.contains { $0.id == id }
+        }), let id = settings.automaticLooks.lookID(at: now, location: settings.schedule.location),
+              let look = library.looks.first(where: { $0.id == id }),
+              allTextures.contains(where: { $0.id == look.textureID }) else { return nil }
+        return look
     }
-    var intensityDescription: String { settings.intensity.formatted(.percent.precision(.fractionLength(0))) }
+    var appearance: PaperSettings {
+        var value = settings
+        automaticLook?.apply(to: &value)
+        return value
+    }
+    var texture: TexturePreset { allTextures.first { $0.id == appearance.textureID } ?? Self.defaultTexture }
+    var adjustments: TextureRenderer.GrainAdjustments {
+        .init(scale: appearance.grainScale, strength: appearance.grainStrength)
+    }
+    var intensityDescription: String { appearance.intensity.formatted(.percent.precision(.fractionLength(0))) }
     var pauseReason: PauseReason? { reason(for: nil) }
     var status: String {
         switch pauseReason {
@@ -119,6 +162,7 @@ final class PaperState: ObservableObject {
         case .comparing: return "Comparing with your original screen"
         case .snoozed: return "Snoozed until \(settings.snoozeUntil?.formatted(date: .omitted, time: .shortened) ?? "later")"
         case .applicationExcluded: return "Paused for an excluded app"
+        case .applicationNotIncluded: return "Waiting for a selected app"
         case .battery: return "Paused on battery"
         case .lowPower: return "Paused in Low Power Mode"
         case .outsideSchedule:
@@ -147,11 +191,12 @@ final class PaperState: ObservableObject {
     }
     func selectTexture(_ id: String) throws {
         guard allTextures.contains(where: { $0.id == id }) else { throw PaperActionError.missingTexture }
+        settings.automaticLooks.enabled = false
         settings.textureID = id
     }
     func toggleFavorite() {
         var updated = library
-        if !updated.favorites.insert(settings.textureID).inserted { updated.favorites.remove(settings.textureID) }
+        if !updated.favorites.insert(texture.id).inserted { updated.favorites.remove(texture.id) }
         saveLibrary(updated)
     }
     @discardableResult func saveLook(name: String) throws -> UUID {
@@ -159,7 +204,7 @@ final class PaperState: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name.count <= 60 else { throw PaperActionError.invalidName }
         var updated = library
-        var look = PaperLook(name: name, settings: settings)
+        var look = PaperLook(name: name, settings: appearance)
         if let index = updated.looks.firstIndex(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
             look.id = updated.looks[index].id
             updated.looks[index] = look
@@ -167,13 +212,13 @@ final class PaperState: ObservableObject {
             guard updated.looks.count < PaperLibrary.maximumLooks else { throw PaperActionError.tooManyLooks }
             updated.looks.append(look)
         }
-        try persistence.save(updated, key: "library.v1")
-        library = updated
+        try saveCollection(PaperCollection(papers: customPapers, library: updated))
         return look.id
     }
     func applyLook(_ id: UUID) throws {
         guard let look = library.looks.first(where: { $0.id == id }) else { throw PaperActionError.missingLook }
         guard allTextures.contains(where: { $0.id == look.textureID }) else { throw PaperActionError.missingTexture }
+        settings.automaticLooks.enabled = false
         look.apply(to: &settings)
     }
     func removeLook(_ id: UUID) {
@@ -182,7 +227,7 @@ final class PaperState: ObservableObject {
         saveLibrary(updated)
     }
     private func saveLibrary(_ updated: PaperLibrary) {
-        do { try persistence.save(updated, key: "library.v1"); library = updated }
+        do { try saveCollection(PaperCollection(papers: customPapers, library: updated)) }
         catch { showError("Could not save your library", error) }
     }
     func snooze(minutes: Double, at date: Date = Date()) {
@@ -224,17 +269,13 @@ final class PaperState: ObservableObject {
         for url in urls {
             do {
                 guard papers.count < 50 else { throw PaperImportError.tooMany }
-                let attributes = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-                guard attributes.isRegularFile == true, (attributes.fileSize ?? Int.max) <= 1_048_576
-                else { throw PaperImportError.tooLarge }
-                let paper = try RecipeImport.decode(Data(contentsOf: url))
+                let paper = try RecipeImport.decode(BoundedJSONFile.read(url))
                 papers.append(paper)
                 selected = paper.id
             } catch { failures.append("\(url.lastPathComponent): \(error.localizedDescription)") }
         }
         do {
-            try persistence.save(papers, key: "papers.v1")
-            customPapers = papers
+            try saveCollection(PaperCollection(papers: papers, library: library))
             if let selected { settings.textureID = selected }
         } catch { failures.append(error.localizedDescription) }
         if !failures.isEmpty { alert = PaperAlert(title: "Some papers could not be imported", message: failures.joined(separator: "\n\n")) }
@@ -243,25 +284,47 @@ final class PaperState: ObservableObject {
         let removedID = settings.textureID
         let remaining = customPapers.filter { $0.id != settings.textureID }
         do {
-            try persistence.save(remaining, key: "papers.v1")
-            customPapers = remaining
             var updated = library
             updated.removeTexture(removedID)
-            saveLibrary(updated)
+            try saveCollection(PaperCollection(papers: remaining, library: updated))
             settings.textureID = Self.defaultTexture.id
         } catch { showError("Could not remove paper", error) }
     }
-    func addExcludedApp(url: URL) {
+    func addExcludedApp(url: URL, included: Bool = false) {
         guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier,
               id != Bundle.main.bundleIdentifier else {
             alert = PaperAlert(title: "Choose another app", message: "Choose an application other than Paper.")
             return
         }
-        guard !settings.excludedApps.contains(where: { $0.bundleID == id }) else { return }
+        let apps = included ? settings.includedApps : settings.excludedApps
+        guard !apps.contains(where: { $0.bundleID == id }) else { return }
         let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? url.deletingPathExtension().lastPathComponent
-        settings.excludedApps.append(.init(bundleID: id, name: name))
+        if included { settings.includedApps.append(.init(bundleID: id, name: name)) }
+        else { settings.excludedApps.append(.init(bundleID: id, name: name)) }
+    }
+    private func normalizeAutomaticLooks() {
+        var automatic = settings.automaticLooks
+        let ids = Set(library.looks.map(\.id))
+        if let id = automatic.dayLookID, !ids.contains(id) { automatic.dayLookID = nil }
+        if let id = automatic.nightLookID, !ids.contains(id) { automatic.nightLookID = nil }
+        if automatic != settings.automaticLooks { settings.automaticLooks = automatic }
+    }
+    private func saveCollection(_ value: PaperCollection) throws {
+        try PaperArchive.validate(value)
+        try persistence.save(value, key: "collection.v1")
+        customPapers = value.papers
+        library = value.library
+        normalizeAutomaticLooks()
+    }
+    func exportLibrary() throws -> Data {
+        try PaperArchive(collection: PaperCollection(papers: customPapers, library: library)).encoded()
+    }
+    func importLibrary(_ data: Data) throws {
+        let archive = try PaperArchive.decode(data)
+        let merged = try archive.merging(into: PaperCollection(papers: customPapers, library: library))
+        try saveCollection(merged)
     }
     func refreshLogin() { loginState = login.state }
     func toggleLogin() {

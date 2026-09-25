@@ -68,3 +68,12 @@ Version 0.2.1 follow-up:
 - A narrow adapter checks public on-screen window metadata only while an excluded app is running and Paper is enabled. It suspends during sleep/session inactivity, ignores hidden apps and transparent windows, and changes state only when panel levels change. No screenshots, window titles, event taps or new permissions are used.
 - 62 XCTest tests and all 18 native display checks passed. The native suite includes a real nonactivating accessory-panel fixture and verifies excluded/unexcluded stacking plus restoration after the excluded app exits. The oracle rejects incorrect levels instead of merely accepting the presence of an overlay.
 - The user's Atoll exclusion, Soft Wove at 34%, coarse grain, schedule-off and power/login settings are preserved. Updated signed/notarized app and DMG evidence accompanies the 0.2.1 delivery.
+
+
+Version 0.3.0 follow-up:
+
+- Added selected-app mode, automatic day/night saved looks, display intensity overrides and an atomic library backup/merge. Manual off, excluded displays and other visibility rules retain priority. Legacy settings migrate with the new features disabled by default.
+- 74 XCTest cases cover the new policy, migration, automatic appearance, hostile/bounded JSON, collision remapping, idempotent imports, corruption and capacity handling alongside the retained Deckle/Record suites.
+- The live app passed automatic-look selection with effective intensity, a display override/reset, empty selected-app pause, library export/reimport without duplicates and manual-look restoration. Temporary looks/city were removed; Atoll and user appearance/power/login preferences were retained.
+- 23 native display cases passed, including different global/virtual-display opacities and only-app precedence. Six additional checks passed in actual native fullscreen Spaces: before/during/after, manual off, foreground exclusion and display exclusion. Final artifact hashes are recorded in delivered JSON.
+- The broad review fixes and measurement limitations are described in [performance and security review](performance-security.md). Real sleep/wake was initially blocked by the host's system-wide SleepDisabled setting; no physical success is inferred from notification-policy unit tests. The delivery report records final physical-test and sustained-measurement outcomes.

@@ -40,11 +40,12 @@ final class SystemEnvironment {
     }
     private func updateFrontmost(_ app: NSRunningApplication?) {
         // Opening Paper's controls must not bypass the app rule underneath them.
-        guard let id = app?.bundleIdentifier, id != Bundle.main.bundleIdentifier else { return }
-        state.frontmostBundleID = id
-        state.refreshClock()
+        let id = app?.bundleIdentifier
+        guard id == nil || id != Bundle.main.bundleIdentifier else { return }
+        if state.frontmostBundleID != id { state.frontmostBundleID = id; state.refreshClock() }
     }
     func refresh() {
+        updateFrontmost(NSWorkspace.shared.frontmostApplication)
         if let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
            let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() {
             state.onBattery = (type as String) == (kIOPSBatteryPowerValue as String)

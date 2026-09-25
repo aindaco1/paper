@@ -28,7 +28,7 @@ struct PaperView: View {
 
             Form {
                 Section("Your paper") {
-                    Picker("Texture", selection: $state.settings.textureID) {
+                    Picker("Texture", selection: Binding(get: { state.texture.id }, set: { try? state.selectTexture($0) })) {
                         if !state.favoriteTextures.isEmpty {
                             Section("Favorites") {
                                 ForEach(state.favoriteTextures) { texture in Text(texture.name).tag(texture.id) }
@@ -39,21 +39,26 @@ struct PaperView: View {
                         }
                     }.accessibilityIdentifier("paper.texture")
                     LibraryControls(state: state)
-                    TextureSample(preset: state.texture, adjustments: state.adjustments, intensity: state.settings.intensity)
+                    if state.settings.automaticLooks.enabled {
+                        Text(state.automaticLook.map { "Automatic look: \($0.name)" } ?? "Choose a city and two saved looks to finish setup.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    TextureSample(preset: state.texture, adjustments: state.adjustments, intensity: state.appearance.intensity)
                         .frame(height: 92)
                     HStack {
-                        Slider(value: $state.settings.intensity, in: 0.05...0.45, step: 0.01) {
+                        Slider(value: Binding(get: { state.appearance.intensity }, set: { state.settings.intensity = $0 }), in: 0.05...0.45, step: 0.01) {
                             Text("Intensity")
                         }.accessibilityValue(state.intensityDescription)
                             .accessibilityIdentifier("paper.intensity")
                         Text(state.intensityDescription)
                             .monospacedDigit().frame(width: 38).accessibilityHidden(true)
                     }
-                    Picker("Grain", selection: $state.settings.grainScale) {
+                    .disabled(state.settings.automaticLooks.enabled)
+                    Picker("Grain", selection: Binding(get: { state.appearance.grainScale }, set: { state.settings.grainScale = $0 })) {
                         Text("Fine").tag(0.5)
                         Text("Natural").tag(1.0)
                         Text("Coarse").tag(2.0)
-                    }.pickerStyle(.segmented)
+                    }.pickerStyle(.segmented).disabled(state.settings.automaticLooks.enabled)
                     HStack {
                         Button(state.comparing ? "Back to paper" : "Compare original") { state.comparing.toggle() }
                             .disabled(!state.settings.enabled)
@@ -74,6 +79,7 @@ struct PaperView: View {
                         Spacer()
                         if state.customPapers.contains(where: { $0.id == state.settings.textureID }) {
                             Button("Remove imported paper", role: .destructive) { state.removeSelectedImport() }
+                                .disabled(state.settings.automaticLooks.enabled)
                         }
                     }
                 }
@@ -94,6 +100,7 @@ struct PaperView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         } else { SolarScheduleControls(state: state) }
                     }
+                    AutomaticLooksControls(state: state)
                     Toggle("Pause on battery", isOn: $state.settings.pauseOnBattery)
                     Toggle("Pause in Low Power Mode", isOn: $state.settings.pauseOnLowPower)
                 }
@@ -105,6 +112,39 @@ struct PaperView: View {
                                 if included { state.settings.disabledDisplays.remove(display.id) }
                                 else { state.settings.disabledDisplays.insert(display.id) }
                             }))
+                        Toggle("Custom intensity for \(display.name)", isOn: Binding(
+                            get: { state.settings.displayIntensities[display.id] != nil },
+                            set: { enabled in state.settings.displayIntensities[display.id] = enabled ? state.appearance.intensity : nil }))
+                            .font(.caption)
+                        if state.settings.displayIntensities[display.id] != nil {
+                            HStack {
+                                Slider(value: Binding(get: { state.settings.intensity(for: display.id) },
+                                    set: { state.settings.displayIntensities[display.id] = $0 }), in: 0.05...0.45, step: 0.01) {
+                                        Text("\(display.name) intensity")
+                                    }
+                                Text(state.settings.intensity(for: display.id).formatted(.percent.precision(.fractionLength(0))))
+                                    .monospacedDigit().frame(width: 38)
+                            }
+                        }
+                    }
+                }
+                Section("App rules") {
+                    Toggle("Only show in selected apps", isOn: Binding(
+                        get: { state.settings.appRuleMode == .only },
+                        set: { state.settings.appRuleMode = $0 ? .only : .except }))
+                    if state.settings.appRuleMode == .only {
+                        Text("Paper waits until a selected app is active. Excluded apps still take priority.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        ForEach(state.settings.includedApps) { app in
+                            HStack {
+                                Text(app.name)
+                                Spacer()
+                                Button { state.settings.includedApps.removeAll { $0.id == app.id } } label: {
+                                    Image(systemName: "minus.circle")
+                                }.buttonStyle(.borderless).accessibilityLabel("Remove \(app.name) from selected apps")
+                            }
+                        }
+                        Button("Add selected app…") { addApp(included: true) }.disabled(choosingFile)
                     }
                 }
                 Section("Pause in these apps") {
@@ -126,7 +166,16 @@ struct PaperView: View {
                                 .help("Remove \(app.name)")
                         }
                     }
-                    Button("Add app…", action: addApp).disabled(choosingFile)
+                    Button("Add app…") { addApp() }.disabled(choosingFile)
+                }
+                Section("Library backup") {
+                    HStack {
+                        Button("Export library…", action: exportLibrary).disabled(choosingFile)
+                        Spacer()
+                        Button("Import library…", action: importLibrary).disabled(choosingFile)
+                    }
+                    Text("Includes favorites, saved looks and custom papers. Import merges them without replacing your existing items.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Preferences") {
                     Toggle("Toggle with ⇧⌥⌘P", isOn: $state.settings.shortcutEnabled)
@@ -179,7 +228,7 @@ struct PaperView: View {
             state.importRecipes(urls: panel.urls)
         }
     }
-    private func addApp() {
+    private func addApp(included: Bool = false) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
@@ -187,11 +236,32 @@ struct PaperView: View {
         panel.prompt = "Add app"
         chooseFile(panel) { response in
             guard response == .OK, let url = panel.url else { return }
-            state.addExcludedApp(url: url)
+            state.addExcludedApp(url: url, included: included)
         }
     }
 
-    private func chooseFile(_ panel: NSOpenPanel, completion: @escaping (NSApplication.ModalResponse) -> Void) {
+    private func exportLibrary() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "Paper-library.json"
+        chooseFile(panel) { response in
+            guard response == .OK, let url = panel.url else { return }
+            do { try state.exportLibrary().write(to: url, options: .atomic) }
+            catch { state.showError("Could not export library", error) }
+        }
+    }
+    private func importLibrary() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.canChooseDirectories = false
+        panel.message = "Merge a Paper library backup. Existing items and visibility settings are preserved."
+        chooseFile(panel) { response in
+            guard response == .OK, let url = panel.url else { return }
+            do { try state.importLibrary(BoundedJSONFile.read(url)) }
+            catch { state.showError("Could not import library", error) }
+        }
+    }
+    private func chooseFile(_ panel: NSSavePanel, completion: @escaping (NSApplication.ModalResponse) -> Void) {
         guard !choosingFile,
               let window = NSApp.windows.first(where: { $0.contentViewController is NSHostingController<PaperView> })
         else { return }

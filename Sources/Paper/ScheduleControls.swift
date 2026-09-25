@@ -25,7 +25,7 @@ struct SolarScheduleControls: View {
            let day = SolarDay.calculate(on: state.now, at: location) {
             Text(description(day, location: location)).font(.caption).foregroundStyle(.secondary)
         } else {
-            Text("Paper stays paused until you choose a city.").font(.caption).foregroundStyle(.secondary)
+            Text("Choose a city to calculate sunrise and sunset.").font(.caption).foregroundStyle(.secondary)
         }
         Text("Calculated on your Mac. City lookup uses Apple’s service; no location permission is needed.")
             .font(.caption).foregroundStyle(.secondary)
@@ -94,6 +94,28 @@ private struct CityPicker: View {
             } catch {
                 if !Task.isCancelled { self.error = "City lookup failed. Check your connection and try again." }
             }
+        }
+    }
+}
+
+struct AutomaticLooksControls: View {
+    @ObservedObject var state: PaperState
+    var body: some View {
+        Toggle("Automatic day/night looks", isOn: $state.settings.automaticLooks.enabled)
+        if state.settings.automaticLooks.enabled {
+            Picker("Day look", selection: $state.settings.automaticLooks.dayLookID) {
+                Text("Choose a saved look").tag(UUID?.none)
+                ForEach(state.library.looks) { Text($0.name).tag(Optional($0.id)) }
+            }
+            Picker("Night look", selection: $state.settings.automaticLooks.nightLookID) {
+                Text("Choose a saved look").tag(UUID?.none)
+                ForEach(state.library.looks) { Text($0.name).tag(Optional($0.id)) }
+            }
+            if !state.settings.schedule.enabled || state.settings.schedule.mode == .fixed {
+                SolarScheduleControls(state: state)
+            }
+            Text("Uses sunrise and sunset in the selected city. Save looks in Your paper first. Manual selection or applying a look ends automatic switching.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 }

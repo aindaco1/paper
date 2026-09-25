@@ -17,6 +17,7 @@ final class PaperStateTests: XCTestCase {
             defaults.set(bad, forKey: "settings.v1")
             let state = PaperState(defaults: defaults)
             XCTAssertNotNil(state.alert)
+            XCTAssertFalse(state.settings.enabled, "Unreadable visibility rules must not enable an overlay")
             XCTAssertEqual(state.settings.intensity, 0.22)
             XCTAssertEqual(state.texture.name, "Soft Wove")
             let backup = defaults.dictionaryRepresentation().first { $0.key.hasPrefix("settings.v1.corrupt.") }
