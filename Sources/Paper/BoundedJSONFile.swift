@@ -5,8 +5,8 @@ import Darwin
 /// Opening nonblocking before fstat also rejects FIFOs without hanging the UI.
 enum BoundedJSONFile {
     static let maximumBytes = 1_048_576
-    static func read(_ url: URL) throws -> Data {
-        guard url.isFileURL else { throw PaperImportError.invalidRecipe }
+    static func read(_ url: URL, maximumBytes: Int = Self.maximumBytes) throws -> Data {
+        guard url.isFileURL, (1...2_097_152).contains(maximumBytes) else { throw PaperImportError.invalidRecipe }
         let descriptor = open(url.path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)

@@ -24,7 +24,7 @@ final class OverlayController {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) {
                 [weak self] _ in Task { @MainActor in
                     guard let self else { return }
-                    if name == NSWorkspace.didWakeNotification { self.asleep = false }
+                    if name == NSWorkspace.didWakeNotification { self.asleep = false; self.state.record(.wake) }
                     if name == NSWorkspace.sessionDidBecomeActiveNotification { self.sessionActive = true }
                     self.state.refreshClock()
                     self.refreshDisplays()
@@ -34,7 +34,7 @@ final class OverlayController {
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) {
                 [weak self] _ in Task { @MainActor in
-                    if name == NSWorkspace.willSleepNotification { self?.asleep = true }
+                    if name == NSWorkspace.willSleepNotification { self?.asleep = true; self?.state.record(.sleep) }
                     else { self?.sessionActive = false }
                     self?.refresh()
                 }
@@ -57,7 +57,7 @@ final class OverlayController {
             guard let id = screen.paperIdentifier else { return nil }
             return DisplayChoice(id: id, name: screen.localizedName)
         }
-        if state.displayChoices != choices { state.displayChoices = choices }
+        if state.displayChoices != choices { state.displayChoices = choices; state.record(.displaysChanged) }
         refresh()
     }
     private func refresh() {

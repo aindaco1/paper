@@ -67,6 +67,7 @@ final class PaperState: ObservableObject {
     static let shared = PaperState(defaults: applicationDefaults)
     /// The native harness runs the signed app with a disposable preferences suite.
     /// Only an explicitly named UUID test suite is accepted; normal launches use standard defaults.
+    static var isTestRun: Bool { ProcessInfo.processInfo.environment["PAPER_TEST_SUITE"].flatMap(UUID.init(uuidString:)) != nil }
     private static var applicationDefaults: UserDefaults {
         if let id = ProcessInfo.processInfo.environment["PAPER_TEST_SUITE"], UUID(uuidString: id) != nil {
             return UserDefaults(suiteName: "xyz.dustwave.paper.test.\(id)")!
@@ -91,6 +92,16 @@ final class PaperState: ObservableObject {
     @Published var shortcutError: String?
     @Published var loginState: LaunchAtLoginState = .disabled
     private let persistence: PaperPersistence
+    var diagnosticEvents: [PaperLogEvent] {
+        (persistence.defaults.stringArray(forKey: "diagnostic.events.v1") ?? []).suffix(20).compactMap(PaperLogEvent.init(rawValue:))
+    }
+    func record(_ event: PaperLogEvent) {
+        persistence.defaults.set(Array((diagnosticEvents + [event]).suffix(20)).map(\.rawValue), forKey: "diagnostic.events.v1")
+    }
+    var pendingDiagnostic: Data? {
+        get { guard let data = persistence.defaults.data(forKey: "diagnostic.pending.v1"), data.count <= 8192 else { return nil }; return data }
+        set { persistence.defaults.set(newValue, forKey: "diagnostic.pending.v1") }
+    }
     let login = LaunchAtLoginController()
     private var boundaryTimer: Timer?
 
@@ -127,6 +138,7 @@ final class PaperState: ObservableObject {
         normalizeAutomaticLooks()
         if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
         if !errors.isEmpty {
+            record(.recovery)
             alert = PaperAlert(title: "Recovered default settings",
                               message: errors.joined(separator: " ") + " A copy of the unreadable data was kept locally.")
         }
@@ -182,6 +194,7 @@ final class PaperState: ObservableObject {
             comparing: comparing, now: now)
     }
     func toggle() {
+        record(.toggled)
         setEnabled(!settings.enabled)
     }
     func setEnabled(_ enabled: Bool) {
@@ -260,6 +273,7 @@ final class PaperState: ObservableObject {
         catch { showError("Could not save settings", error) }
     }
     func showError(_ title: String, _ error: Error) {
+        record(.operationFailed)
         alert = PaperAlert(title: title, message: error.localizedDescription)
     }
     func importRecipes(urls: [URL]) {
@@ -272,7 +286,7 @@ final class PaperState: ObservableObject {
                 let paper = try RecipeImport.decode(BoundedJSONFile.read(url))
                 papers.append(paper)
                 selected = paper.id
-            } catch { failures.append("\(url.lastPathComponent): \(error.localizedDescription)") }
+            } catch { record(.importFailed); failures.append("\(url.lastPathComponent): \(error.localizedDescription)") }
         }
         do {
             try saveCollection(PaperCollection(papers: papers, library: library))

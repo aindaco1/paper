@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: xcode-27
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+      - name: Verify toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          test "$(xcodebuild -version | head -1 | cut -d ' ' -f 2 | cut -d . -f 1)" -ge 27
+      - name: Validate source and contracts
+        run: |
+          node shared/dust-wave-platform/scripts/scan-tracked-secrets.mjs
+          node script/validate.mjs
+          node --test Tests/relay/*.test.mjs
+          python3 -m unittest discover -s Tests/native_display -p 'test_*.py'
+      - name: Swift tests
+        run: |
+          swift test --package-path shared/dust-wave-platform/desktop
+          swift test
+      - name: Package structure
+        run: ./script/build_and_run.sh --build-only

@@ -28,7 +28,9 @@ Shortcuts exposes **Toggle Paper**, **Set Paper Enabled**, **Snooze Paper**, **S
 
 Use **Import paper…** to choose one or more Deckle JSON recipes, including `.decklepaper.json` files. Each recipe receives a fresh local identity while preserving its rendering seed. Imports are limited to 1 MB per file and 50 saved papers. Invalid files report an error while valid files still import. Remove an imported paper with its button below the picker. There is no editor or online gallery in this version.
 
-The overlay never captures your screen or changes display gamma. It does not require Accessibility, Input Monitoring or Screen Recording permission. Settings and recipes remain local in the `xyz.dustwave.paper` preferences domain. City lookup sends only the city you enter to Apple's service. Pause the effect for screenshots, screen sharing and color-sensitive work; it does not promise to hide itself from capture tools.
+**Help & diagnostics…** previews a bounded, filtered report of app/system versions, broad overlay state and recent event categories. You can save it locally, import a Paper `.ips` crash summary, or explicitly send it to this repository through the existing Dust Wave relay. Matching reports are aggregated; retrying an unconfirmed report keeps the same ID. Raw logs, paths, app names, display IDs, city and recipe contents are excluded. See [privacy](docs/privacy.md) and [support](docs/support.md).
+
+The overlay never captures your screen or changes display gamma. It does not require Accessibility, Input Monitoring or Screen Recording permission. Settings and recipes remain local in the `xyz.dustwave.paper` preferences domain. City lookup sends only the city you enter to Apple's service. Update checks/downloads use GitHub; reviewed report submissions use `crash.dustwave.xyz`. No diagnostic is sent automatically. Pause the effect for screenshots, screen sharing and color-sensitive work; it does not promise to hide itself from capture tools.
 
 To build the source ZIP, use Xcode 27 or later (for SwiftPM App Intents metadata extraction). The app's deployment target remains macOS 13:
 
@@ -44,9 +46,9 @@ git submodule update --init
 node script/validate.mjs
 ```
 
-The new Platform fixture commit is local and unpublished. This delivery includes a Git bundle and migration instructions for importing it; the source ZIP already includes the complete pinned tree.
+The exact Platform gitlink includes the desktop support package and separately licensed display test fixture. Initialize submodules when cloning; the source ZIP includes the complete pinned tree.
 
-The Codex Run action calls that same script. `--build-only` stages `dist/Paper.app`; `--logs` streams logs after launch. The script creates an arm64 release binary and an ad-hoc development signature unless `PAPER_SIGNING_IDENTITY` names an installed Developer ID identity. App Intents metadata is extracted into the bundle before signing. There is no automatic updater.
+The Codex Run action calls that same script. `--build-only` stages `dist/Paper.app`; `--logs` streams logs after launch. The script creates an arm64 release binary and an ad-hoc development signature unless `PAPER_SIGNING_IDENTITY` names an installed Developer ID identity. App Intents metadata is extracted into the bundle before signing. Signed updates use the shared Platform Sparkle adapter. Checks run quietly at launch and periodically when enabled; installation requires your action. Use **Check for Updates…** or turn automatic checks off in settings.
 
 From a committed Git checkout, `./script/package.sh` builds the local DMG and source ZIP in `outputs/`. The source ZIP includes the pinned Platform source tree; pin validation itself needs Git metadata. An example import is in `docs/examples/soft-linen.decklepaper.json`.
 
@@ -54,6 +56,8 @@ From a committed Git checkout, `./script/package.sh` builds the local DMG and so
 
 The [native display suite](Tests/native_display/README.md) uses Platform's shared test-only virtual-monitor fixture, with Paper-specific geometry, focus, exclusion and hot-plug checks. Helpers are never bundled with the app. This does not qualify physical HDR/cable/wake behavior or every supported OS.
 
-The renderer and recipe model are pinned, attributed Deckle sources. Record supplies the login adapter, shortcut-registration pattern and display-placement lessons. The Platform gitlink supplies the existing pin/documentation/integrity tools without importing its unrelated speech or AI runtime. See [upstream review](docs/upstream-review.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [testing evidence](docs/testing.md).
+The renderer and recipe model are pinned, attributed Deckle sources. Record supplies the login adapter, shortcut-registration pattern and display-placement lessons. The Platform gitlink supplies pin/documentation/integrity tools and its separate desktop update/diagnostic package, without importing its speech or AI runtime. See [upstream review](docs/upstream-review.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [testing evidence](docs/testing.md).
 
 The application is MIT-licensed. The separate native display test tooling is GPL-3.0, retaining OwlSwitch's license. This is an independent app, not a Paperman or Deckle release.
+
+For contribution and release steps, see [CONTRIBUTING](CONTRIBUTING.md), [release workflow](docs/releasing.md), and [roadmap](docs/roadmap.md). Versions through 0.3.0 need one manual installation of an updater-enabled build.

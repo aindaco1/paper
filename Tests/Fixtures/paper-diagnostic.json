@@ -1,0 +1,28 @@
+{
+  "schema": "paper-diagnostic-v1",
+  "id": "d0a65956-4390-4c74-a792-2c57033100cd",
+  "kind": "current_state",
+  "application": {
+    "version": "0.4.0",
+    "build": "7",
+    "operatingSystem": "27.0.0",
+    "architecture": "arm64"
+  },
+  "state": {
+    "enabled": true,
+    "pause": "none",
+    "textureSource": "bundled",
+    "intensityBucket": 4,
+    "displays": 1,
+    "excludedDisplays": 0,
+    "floatingPanelsClear": false,
+    "battery": false,
+    "lowPower": false,
+    "schedule": "disabled",
+    "appRule": "except",
+    "events": [
+      "launch",
+      "displaysChanged"
+    ]
+  }
+}

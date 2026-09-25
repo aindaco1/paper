@@ -16,7 +16,7 @@ for row in subprocess.check_output(['/bin/ps','-axo','pid=,comm='],text=True).sp
 PY
 swift build -c release --arch arm64
 binary_root="$(swift build -c release --arch arm64 --show-bin-path)"
-mkdir -p "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources/Licenses"
+mkdir -p "$app_bundle/Contents/Frameworks" "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources/Licenses"
 install -m 0755 "$binary_root/Paper" "$app_bundle/Contents/MacOS/Paper"
 install -m 0644 Configuration/Info.plist "$app_bundle/Contents/Info.plist"
 cp Licenses/*.txt "$app_bundle/Contents/Resources/Licenses/"
@@ -25,13 +25,10 @@ cp THIRD_PARTY_NOTICES.md "$app_bundle/Contents/Resources/"
 swift script/generate_icon.swift "$task_root/dist"
 iconutil -c icns "$task_root/dist/Paper.iconset" -o "$app_bundle/Contents/Resources/Paper.icns"
 python3 script/generate_intents.py "$app_bundle"
-# A local development signature. Public distribution needs Developer ID + notarization.
-if [[ -n "${PAPER_SIGNING_IDENTITY:-}" ]]; then
-    codesign --force --sign "$PAPER_SIGNING_IDENTITY" --timestamp --options runtime "$app_bundle"
-else
-    codesign --force --sign - --options runtime "$app_bundle"
-fi
-codesign --verify --deep --strict "$app_bundle"
+ditto "$task_root/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" "$app_bundle/Contents/Frameworks/Sparkle.framework"
+cp shared/dust-wave-platform/desktop/LICENSE.* "$app_bundle/Contents/Resources/Licenses/"
+install -m 0644 .build/checkouts/Sparkle/LICENSE "$app_bundle/Contents/Resources/Licenses/Sparkle.txt"
+./script/sign_app.sh "$app_bundle"
 plutil -lint "$app_bundle/Contents/Info.plist"
 [[ "$(lipo -archs "$app_bundle/Contents/MacOS/Paper")" == "arm64" ]]
 case "$mode" in

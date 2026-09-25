@@ -3,6 +3,8 @@ import SwiftUI
 import Combine
 import PaperCore
 import AppIntents
+import DustWaveUpdates
+import Carbon
 
 @main
 enum PaperApp {
@@ -23,13 +25,24 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var excludedPanels: ExcludedPanelMonitor!
     private var statusItem: NSStatusItem!
     private var window: NSWindow?
+    private var diagnosticsWindow: NSWindow?
+    private var diagnostics: PaperDiagnostics!
+    private var updates: AppUpdateController!
+    private var launchedAtLogin = false
     private let shortcut = GlobalShortcut()
     private var subscription: AnyCancellable?
     private var priorShortcutEnabled: Bool?
     private var previousSettings: PaperCoreSettingsSnapshot?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        launchedAtLogin = NSAppleEventManager.shared().currentAppleEvent?
+            .paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         state = PaperState.shared
+        state.record(launchedAtLogin ? .loginLaunch : .launch)
+        updates = AppUpdateController(startingUpdater: !PaperState.isTestRun)
+        diagnostics = PaperDiagnostics(state: state, updates: updates)
         overlay = OverlayController(state: state)
         environment = SystemEnvironment(state: state)
         excludedPanels = ExcludedPanelMonitor(state: state)
@@ -39,6 +52,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         statusItem.button?.toolTip = "Paper — a softer surface for your screen"
         let menu = NSMenu()
         menu.delegate = self
+        menu.autoenablesItems = false
         statusItem.menu = menu
         installMainMenu()
         shortcut.onToggle = { [weak self] in self?.state.toggle() }
@@ -51,7 +65,8 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         synchronize()
         PaperShortcuts.updateAppShortcutParameters()
         // Explicit background launches omit the controls; reopening always shows them.
-        if !ProcessInfo.processInfo.arguments.contains("--background") { showSettings() }
+        if !launchedAtLogin && !ProcessInfo.processInfo.arguments.contains("--background") { showSettings() }
+        updates.checkOnLaunch()
     }
 
     private func synchronize() {
@@ -59,6 +74,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         if priorShortcutEnabled != enabled {
             priorShortcutEnabled = enabled
             let status = shortcut.setEnabled(enabled)
+            if status != 0 { state.record(.shortcutUnavailable) }
             state.shortcutError = status == 0 ? nil : "The shortcut is unavailable (\(status)). Use the menu bar, or turn it off here."
         }
         let schedule = PaperCoreSettingsSnapshot(state: state)
@@ -94,6 +110,9 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         snoozeItem.submenu = snoozeMenu
         menu.addItem(snoozeItem)
         addItem("Settings…", action: #selector(showSettings), to: menu, key: ",")
+        addItem("Check for Updates…", action: #selector(checkForUpdates), to: menu)
+        menu.items.last?.isEnabled = updates.canCheckForUpdates && !updates.busy
+        addItem("Help & diagnostics…", action: #selector(showDiagnostics), to: menu)
         menu.addItem(.separator())
         addItem("Quit Paper", action: #selector(quit), to: menu, key: "q")
     }
@@ -101,6 +120,20 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
         menu.addItem(item)
+    }
+    @objc private func checkForUpdates() { updates.checkForUpdates() }
+    @objc private func showDiagnostics() {
+        if diagnosticsWindow == nil {
+            let created = NSWindow(contentViewController: NSHostingController(rootView: PaperDiagnosticsView(model: diagnostics)))
+            created.title = "Paper — Help & diagnostics"
+            created.styleMask = [.titled, .closable]
+            created.isReleasedWhenClosed = false
+            created.center()
+            diagnosticsWindow = created
+        }
+        diagnostics.prepare()
+        NSApp.activate(ignoringOtherApps: true)
+        diagnosticsWindow?.makeKeyAndOrderFront(nil)
     }
     @objc private func togglePaper() { state.toggle() }
     @objc private func snooze(_ sender: NSMenuItem) {
@@ -115,7 +148,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         state.refreshClock()
         state.refreshLogin()
         if window == nil {
-            let host = NSHostingController(rootView: PaperView(state: state))
+            let host = NSHostingController(rootView: PaperView(state: state, updates: updates, showDiagnostics: { [weak self] in self?.showDiagnostics() }))
             let created = NSWindow(contentViewController: host)
             created.title = "Paper"
             created.styleMask = [.titled, .closable, .miniaturizable, .resizable]
@@ -137,6 +170,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         showSettings(); return true
     }
     func applicationWillTerminate(_ notification: Notification) {
+        state.record(.cleanQuit)
         subscription = nil
         shortcut.stop()
         overlay.stop()
@@ -152,6 +186,8 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         let app = NSMenu()
         appItem.submenu = app
         app.addItem(withTitle: "About Paper", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        addItem("Check for Updates…", action: #selector(checkForUpdates), to: app)
+        addItem("Help & diagnostics…", action: #selector(showDiagnostics), to: app)
         app.addItem(.separator())
         addItem("Quit Paper", action: #selector(quit), to: app, key: "q")
         let editItem = NSMenuItem()

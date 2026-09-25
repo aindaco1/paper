@@ -2,9 +2,12 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 import PaperCore
+import DustWaveUpdates
 
 struct PaperView: View {
     @ObservedObject var state: PaperState
+    @ObservedObject var updates: AppUpdateController
+    let showDiagnostics: () -> Void
     @State private var choosingFile = false
 
     var body: some View {
@@ -176,6 +179,15 @@ struct PaperView: View {
                     }
                     Text("Includes favorites, saved looks and custom papers. Import merges them without replacing your existing items.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Updates & support") {
+                    Toggle("Check for updates automatically", isOn: Binding(get: { updates.automaticallyChecksForUpdates }, set: updates.setAutomaticChecks))
+                    HStack {
+                        Button("Check for Updates…") { updates.checkForUpdates() }.disabled(!updates.canCheckForUpdates || updates.busy)
+                        Spacer()
+                        Button("Help & diagnostics…", action: showDiagnostics)
+                    }
+                    Text("Update checks use GitHub. Reports are sent only after you review them and choose Send.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Preferences") {
                     Toggle("Toggle with ⇧⌥⌘P", isOn: $state.settings.shortcutEnabled)

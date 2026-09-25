@@ -45,12 +45,14 @@ final class SystemEnvironment {
         if state.frontmostBundleID != id { state.frontmostBundleID = id; state.refreshClock() }
     }
     func refresh() {
+        let oldPower = (state.onBattery, state.lowPower)
         updateFrontmost(NSWorkspace.shared.frontmostApplication)
         if let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
            let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() {
             state.onBattery = (type as String) == (kIOPSBatteryPowerValue as String)
         } else { state.onBattery = false }
         state.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        if oldPower != (state.onBattery, state.lowPower) { state.record(.powerChanged) }
         state.refreshClock()
         state.refreshLogin()
     }

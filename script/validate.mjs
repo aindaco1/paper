@@ -7,13 +7,14 @@ import { checkDocumentation } from '../shared/dust-wave-platform/packages/test-c
 import { sha256File } from '../shared/dust-wave-platform/packages/release-core/src/file-integrity.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-assertConsumerPin({ root, expectedCommit: '6bb9854149203ee71445bf150c4ba86fac607d04',
-  packages: { 'test-core': '0.3.0', 'release-core': '0.4.0' } });
+assertConsumerPin({ root, expectedCommit: '2054aaec3264393390577c70cb0a084a256a835c',
+  packages: { 'test-core': '0.3.1', 'release-core': '0.4.0' } });
 assert.equal(readFileSync(resolve(root, 'shared/dust-wave-platform/tools/macos-display/VERSION'), 'utf8').trim(), '0.1.0');
 for (const entry of JSON.parse(readFileSync(resolve(root, 'docs/vendor-sources.json')))) {
   assert.equal(sha256File(resolve(root, entry.path)), entry.sha256, `Vendored source changed: ${entry.path}`);
 }
-const files = ['README.md', 'THIRD_PARTY_NOTICES.md', 'docs/upstream-review.md', 'docs/testing.md'];
+assert.equal(readFileSync(resolve(root, 'shared/dust-wave-platform/desktop/VERSION'), 'utf8').trim(), '0.1.0');
+const files = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'docs/upstream-review.md', 'docs/testing.md', 'docs/privacy.md', 'docs/support.md', 'docs/releasing.md', 'docs/roadmap.md'];
 const result = checkDocumentation({ root, files: files.map(file => resolve(root, file)),
   requiredFiles: files, restrictToRoot: true });
 assert.deepEqual(result.errors, []);
