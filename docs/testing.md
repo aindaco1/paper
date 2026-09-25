@@ -2,7 +2,7 @@
 
 This file separates automated evidence, local app acceptance and broader release qualification.
 
-For the current release, see [Paper 1.0 validation](validation/1.0.0.md). The versioned results below are historical.
+For the current release, see [Paper 1.0.2 validation](validation/1.0.2.md). The versioned results below are historical.
 
 Automated coverage includes the retained Deckle renderer suite and Record login-service tests, plus Paper's schedule boundaries, DST behavior, snooze expiry, manual-off/display/app/power precedence, corrupt-data recovery, recipe identity/seed compatibility, partial import failures, and overlay window input/focus configuration.
 
