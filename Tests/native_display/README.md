@@ -57,3 +57,9 @@ manual-off and excluded-display cases before and after. `--manual` uses the Appl
 Sleep menu instead of `pmset sleepnow`. A timeout or a host with system sleep
 disabled is a failure/blocker, never a physical pass. Do not change system power
 settings or enable administrator access as an implicit test setup step.
+
+## Physical HDR and input
+
+Compile `HDRFixture.swift` as a test-only AppKit executable, then pass an absolute JSONL evidence path when launching it. It renders static extended-linear-sRGB float patches at 0.18, 1, 2 and 4 using `CAMetalLayer`; it never changes brightness, color presets, gamma or power settings. Bring its window to the foreground and allow HDR headroom to settle, then use **Record HDR state**. Compare Paper on/off using the physical shortcut and click **Click-through test** with the real pointer. The evidence records headroom, focus and click counts, without screenshots.
+
+Physical observer feedback establishes whether bright patches remain distinct; an SDR screenshot cannot. Current headroom of 1 is inconclusive for HDR, even when potential headroom is greater. Power mode, content visibility and the display preset can affect it. Record those limitations instead of calling capability a pass.
