@@ -20,7 +20,7 @@ Paper uses Deckle revision `cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91`. It vendor
 | [PR 45: community downloads](https://github.com/YellowFoxH4XOR/deckle/pull/45) | No online gallery or download client. Import user-selected local recipes. |
 | [PR 38: URL diagnostics](https://github.com/YellowFoxH4XOR/deckle/pull/38) | No URL automation in this version. |
 | [PRs 40](https://github.com/YellowFoxH4XOR/deckle/pull/40), [51](https://github.com/YellowFoxH4XOR/deckle/pull/51): updater errors/blocking | Do not include Deckle's custom updater. A future release can adapt Record's signed Sparkle flow once Paper has a release identity/feed. |
-| [Issue 15: built-in textures](https://github.com/YellowFoxH4XOR/deckle/issues/15) | 0.1.1 exposes seven more existing Deckle papers using the unchanged pinned renderer. See the selection note below. |
+| [Issue 15: built-in textures](https://github.com/YellowFoxH4XOR/deckle/issues/15) | 0.1.2 exposes all 26 textures from the unchanged pinned catalog, with Soft Wove as the default for new installations. |
 | Issues 6, 14, 16 | Windows, localization and community features are outside this first macOS build. Existing renderer supports imported recipes. |
 | Issue 52 | Promotional invitation; unrelated to implementation. |
 
@@ -29,3 +29,13 @@ No PR was cherry-picked wholesale and no upstream issue or PR was modified. The 
 The 0.1.1 follow-up refreshed the live issues/PRs and confirmed that upstream HEAD still matches the pinned revision. No public per-texture usage, voting or download ranking was found in the [preset catalog](https://github.com/YellowFoxH4XOR/deckle/blob/cb4eb09dc117bb046c3ca83b782c5a9ed53dfd91/Sources/Deckle/TexturePreset.swift) or [community index](https://raw.githubusercontent.com/YellowFoxH4XOR/deckle-papers/main/index.json). The latter contains three entries with name, author, description and file only. Paper therefore bundles the seven material papers immediately after Soft Wove in the catalog: Rice Paper, Laid Cotton, Newsprint, Cold Press, Artist Canvas, Foxed Amber and Bookcloth. These are catalog selections, not a claimed popularity ranking. All original three choices and existing selections remain available.
 
 The follow-up also fixes the local build workflow: it stops both project-owned app copies before rebuilding, checks the exact newly launched executable, and derives archive versions from Info.plist. This avoids stacked development overlays and stale version labels; it does not change the upstream renderer or add runtime dependencies.
+
+Version 0.1.2 replaces the separate list of ten texture IDs with Deckle's complete pinned catalog. Soft Wove (`classic-matte`) appears first and is the default for new installations, unreadable settings, and unavailable or removed selections. Valid saved choices remain unchanged. No renderer, recipe format or vendor file changed.
+
+Roadmap suggestions, not implemented in this build:
+
+- Favorites or a few saved combinations of texture, intensity and grain would make the larger catalog easier to use. Deckle's existing desk setups provide a reference; keep Paper's version small.
+- Native Shortcuts actions for toggle, snooze and texture selection could reuse Paper's state commands without a new automation server or URL parser.
+- Actual sunrise/sunset scheduling remains on the [Deckle roadmap](https://github.com/YellowFoxH4XOR/deckle#roadmap) and [issue 19](https://github.com/YellowFoxH4XOR/deckle/issues/19). Paper already has daily fixed-time scheduling; solar times would require an explicit city or optional location choice.
+
+Before public distribution, prioritize Developer ID signing, notarization and the hardware/OS acceptance checks recorded in `testing.md`. Battery rules and custom snooze are already implemented; a community browser or recipe editor can wait.

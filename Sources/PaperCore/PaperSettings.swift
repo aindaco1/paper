@@ -43,8 +43,9 @@ public struct PaperSchedule: Codable, Equatable {
 }
 
 public struct PaperSettings: Codable, Equatable {
+    public static let defaultTextureID = "classic-matte"
     public var enabled = true
-    public var textureID = "quiet-gray"
+    public var textureID = Self.defaultTextureID
     public var intensity = 0.22
     public var grainScale = 1.0
     public var grainStrength = 1.0

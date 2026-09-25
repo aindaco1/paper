@@ -55,10 +55,9 @@ struct PaperPersistence {
 
 @MainActor
 final class PaperState: ObservableObject {
-    // Seven more material papers in upstream catalog order; not a popularity ranking.
-    static let builtIns = ["quiet-gray", "book-cream", "classic-matte", "rice-paper", "whisper-weave",
-                           "newsprint", "painters-press", "artist-canvas", "sunbaked-parchment", "saddle-linen"]
-        .map(TexturePreset.preset(id:))
+    static let defaultTexture = TexturePreset.preset(id: PaperSettings.defaultTextureID)
+    // Use the full pinned catalog, with the default first; no separate ID list to maintain.
+    static let builtIns = [defaultTexture] + TexturePreset.all.filter { $0.id != defaultTexture.id }
     @Published var settings: PaperSettings { didSet { persist(settings, key: "settings.v1") } }
     @Published private(set) var customPapers: [CustomPaper]
     @Published var comparing = false
@@ -83,7 +82,7 @@ final class PaperState: ObservableObject {
         do { customPapers = try persistence.load([CustomPaper].self, key: "papers.v1") ?? [] }
         catch { customPapers = []; errors.append("Imported paper recipes could not be read.") }
         settings.normalize()
-        if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.builtIns[0].id }
+        if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
         if !errors.isEmpty {
             alert = PaperAlert(title: "Recovered default settings",
                               message: errors.joined(separator: " ") + " A copy of the unreadable data was kept locally.")
@@ -92,7 +91,7 @@ final class PaperState: ObservableObject {
     }
 
     var allTextures: [TexturePreset] { Self.builtIns + customPapers.map(TexturePreset.init(custom:)) }
-    var texture: TexturePreset { allTextures.first { $0.id == settings.textureID } ?? Self.builtIns[0] }
+    var texture: TexturePreset { allTextures.first { $0.id == settings.textureID } ?? Self.defaultTexture }
     var adjustments: TextureRenderer.GrainAdjustments {
         .init(scale: settings.grainScale, strength: settings.grainStrength)
     }
@@ -185,7 +184,7 @@ final class PaperState: ObservableObject {
         do {
             try persistence.save(remaining, key: "papers.v1")
             customPapers = remaining
-            settings.textureID = Self.builtIns[0].id
+            settings.textureID = Self.defaultTexture.id
         } catch { showError("Could not remove paper", error) }
     }
     func addExcludedApp(url: URL) {

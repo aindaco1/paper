@@ -2,9 +2,9 @@
 
 A small, free, open-source paper-texture overlay for Apple Silicon Macs running macOS 13 or later.
 
-Paper has ten built-in textures, intensity and grain controls, an instant comparison, snooze, display selection, app exclusions, a daily schedule, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The menu-bar shortcut is **Shift–Option–Command–P**. Launch at login is optional.
+Paper includes all 26 textures in the pinned Deckle catalog, intensity and grain controls, an instant comparison, snooze, display selection, app exclusions, a daily schedule, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The menu-bar shortcut is **Shift–Option–Command–P**. Launch at login is optional.
 
-The bundled textures are Quiet Gray, Book Cream, Soft Wove, Rice Paper, Laid Cotton, Newsprint, Cold Press, Artist Canvas, Foxed Amber, and Bookcloth. The seven additions follow Deckle's material-paper catalog order; no public popularity ranking was found. Your selected texture is preserved when updating.
+**Soft Wove** is the default for new installations and appears first in the picker. All quiet-reading, material, tinted, dark and Spectral+ papers are available. Existing selections are preserved when updating; missing or removed imported selections fall back to Soft Wove. The catalog comes directly from the pinned Deckle source, without a separate list of selected IDs.
 
 Open Paper to show settings. Close the settings window to leave the effect running. Use its menu-bar icon to toggle, snooze or quit. Comparison ends when settings close. Snoozing, excluded apps/displays, battery rules and schedules never override the master off switch.
 

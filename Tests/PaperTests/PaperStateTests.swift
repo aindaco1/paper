@@ -18,6 +18,7 @@ final class PaperStateTests: XCTestCase {
             let state = PaperState(defaults: defaults)
             XCTAssertNotNil(state.alert)
             XCTAssertEqual(state.settings.intensity, 0.22)
+            XCTAssertEqual(state.texture.name, "Soft Wove")
             let backup = defaults.dictionaryRepresentation().first { $0.key.hasPrefix("settings.v1.corrupt.") }
             XCTAssertEqual(backup?.value as? Data, bad)
             state.settings.intensity = 0.30
@@ -43,8 +44,9 @@ final class PaperStateTests: XCTestCase {
     }
     func testExpandedCatalogRendersAndPreservesSelectionsAcrossLaunches() {
         let presets = PaperState.builtIns
-        XCTAssertEqual(presets.count, 10)
-        XCTAssertEqual(Set(presets.map(\.id)).count, 10)
+        XCTAssertEqual(presets.count, 26)
+        XCTAssertEqual(Set(presets.map(\.id)).count, 26)
+        XCTAssertEqual(Set(presets.map(\.id)), Set(TexturePreset.all.map(\.id)))
         for preset in presets {
             withDefaults { defaults in
                 let state = PaperState(defaults: defaults)
@@ -54,6 +56,19 @@ final class PaperStateTests: XCTestCase {
                 let tile = TextureRenderer.compositeTile(for: restarted.texture, backingScale: 1)
                 XCTAssertNotNil(tile.cgImage(forProposedRect: nil, context: nil, hints: nil))
             }
+        }
+    }
+    func testDefaultAndMissingTextureRecoveryPreserveValidSavedChoices() {
+        withDefaults { defaults in
+            let state = PaperState(defaults: defaults)
+            XCTAssertEqual(state.texture.name, "Soft Wove")
+            XCTAssertEqual(PaperState.builtIns.first?.id, state.texture.id)
+            state.settings.textureID = "quiet-gray"
+            XCTAssertEqual(PaperState(defaults: defaults).texture.name, "Quiet Gray")
+            state.settings.textureID = "no-longer-available"
+            XCTAssertEqual(state.texture.name, "Soft Wove")
+            let recovered = PaperState(defaults: defaults)
+            XCTAssertEqual(recovered.settings.textureID, "classic-matte")
         }
     }
     func testSnoozePersistsAndResumesOnlyWhenOtherRulesAllow() {
@@ -108,7 +123,7 @@ final class PaperStateTests: XCTestCase {
             XCTAssertEqual(restarted.texture.id, state.texture.id)
             restarted.removeSelectedImport()
             XCTAssertEqual(restarted.customPapers.count, 0)
-            XCTAssertEqual(restarted.texture.id, "quiet-gray")
+            XCTAssertEqual(restarted.texture.name, "Soft Wove")
         }
     }
     func testCompareDoesNotChangePersistentStateAndToggleEndsSnooze() {

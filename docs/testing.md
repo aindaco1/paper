@@ -37,3 +37,12 @@ Version 0.1.1 follow-up:
 - The build script now terminates only this workspace's dist/output copies and verifies the new executable path. The package script derives archive names from the bundle version.
 
 The broader compatibility and notarization limitations above still apply.
+
+Version 0.1.2 follow-up:
+
+- 49 XCTest tests passed. The catalog test renders and restores all 26 pinned Deckle textures. Default/recovery tests check Soft Wove for a fresh installation, unreadable settings, missing textures and removed imports, while preserving valid saved choices.
+- The release build passed `--verify`. The live picker listed all 26 textures with Soft Wove first. Slate Veil was selected and its preview inspected, then the user's Soft Wove selection was restored.
+- The observed user settings were 34% intensity, coarse grain, enabled overlay, schedule and both power rules off, shortcut on and launch at login on. Those settings were preserved during this update; no system preferences changed.
+- The renderer and preset source remain unchanged. Only the catalog exposure and default/fallback selection changed.
+
+Older-OS, hardware, fullscreen and notarization qualification remains outstanding as described above.
