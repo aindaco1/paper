@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import PaperCore
 
 @main
 enum PaperApp {
@@ -71,9 +72,22 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         addItem(state.settings.enabled ? "Turn Paper off" : "Turn Paper on", action: #selector(togglePaper), to: menu)
         if let until = state.settings.snoozeUntil, until > Date() {
             addItem("End snooze", action: #selector(endSnooze), to: menu)
-        } else {
-            addItem("Snooze for 15 minutes", action: #selector(snooze), to: menu)
         }
+        let snoozeItem = NSMenuItem(title: "Snooze", action: nil, keyEquivalent: "")
+        let snoozeMenu = NSMenu()
+        snoozeMenu.autoenablesItems = false
+        for option in SnoozeOption.allCases {
+            let item = NSMenuItem(title: option.title, action: #selector(snooze(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = option.rawValue
+            item.isEnabled = state.settings.enabled
+            snoozeMenu.addItem(item)
+        }
+        snoozeMenu.addItem(.separator())
+        addItem("Custom duration…", action: #selector(customSnooze), to: snoozeMenu)
+        snoozeMenu.items.last?.isEnabled = state.settings.enabled
+        snoozeItem.submenu = snoozeMenu
+        menu.addItem(snoozeItem)
         addItem("Settings…", action: #selector(showSettings), to: menu, key: ",")
         menu.addItem(.separator())
         addItem("Quit Paper", action: #selector(quit), to: menu, key: "q")
@@ -84,7 +98,11 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         menu.addItem(item)
     }
     @objc private func togglePaper() { state.toggle() }
-    @objc private func snooze() { state.snooze(minutes: 15) }
+    @objc private func snooze(_ sender: NSMenuItem) {
+        guard let option = SnoozeOption(rawValue: sender.tag) else { return }
+        state.snooze(option)
+    }
+    @objc private func customSnooze() { showSettings(); state.showingCustomSnooze = true }
     @objc private func endSnooze() { state.settings.snoozeUntil = nil }
     @objc private func quit() { NSApp.terminate(nil) }
 
@@ -106,7 +124,10 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
-    func windowWillClose(_ notification: Notification) { state.comparing = false }
+    func windowWillClose(_ notification: Notification) {
+        state.comparing = false
+        state.showingCustomSnooze = false
+    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showSettings(); return true
     }

@@ -9,12 +9,13 @@ struct PaperAlert: Identifiable {
 }
 
 enum PaperImportError: LocalizedError {
-    case tooLarge, tooMany, invalidName
+    case tooLarge, tooMany, invalidName, invalidRecipe
     var errorDescription: String? {
         switch self {
         case .tooLarge: return "Choose a JSON recipe smaller than 1 MB."
         case .tooMany: return "You can keep up to 50 imported papers. Remove one before importing another."
         case .invalidName: return "This recipe needs a readable paper name."
+        case .invalidRecipe: return "Choose a Deckle paper recipe exported as JSON. This file is incomplete, invalid, or uses an unsupported recipe version."
         }
     }
 }
@@ -22,7 +23,9 @@ enum PaperImportError: LocalizedError {
 enum RecipeImport {
     static func decode(_ data: Data) throws -> CustomPaper {
         guard data.count <= 1_048_576 else { throw PaperImportError.tooLarge }
-        var paper = try JSONDecoder().decode(CustomPaper.self, from: data)
+        var paper: CustomPaper
+        do { paper = try JSONDecoder().decode(CustomPaper.self, from: data) }
+        catch is DecodingError { throw PaperImportError.invalidRecipe }
         paper.name = String(paper.name.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) })
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !paper.name.isEmpty else { throw PaperImportError.invalidName }
@@ -52,10 +55,14 @@ struct PaperPersistence {
 
 @MainActor
 final class PaperState: ObservableObject {
-    static let builtIns = ["quiet-gray", "book-cream", "classic-matte"].map(TexturePreset.preset(id:))
+    // Seven more material papers in upstream catalog order; not a popularity ranking.
+    static let builtIns = ["quiet-gray", "book-cream", "classic-matte", "rice-paper", "whisper-weave",
+                           "newsprint", "painters-press", "artist-canvas", "sunbaked-parchment", "saddle-linen"]
+        .map(TexturePreset.preset(id:))
     @Published var settings: PaperSettings { didSet { persist(settings, key: "settings.v1") } }
     @Published private(set) var customPapers: [CustomPaper]
     @Published var comparing = false
+    @Published var showingCustomSnooze = false
     @Published var alert: PaperAlert?
     @Published var now = Date()
     @Published var onBattery = false
@@ -89,6 +96,7 @@ final class PaperState: ObservableObject {
     var adjustments: TextureRenderer.GrainAdjustments {
         .init(scale: settings.grainScale, strength: settings.grainStrength)
     }
+    var intensityDescription: String { settings.intensity.formatted(.percent.precision(.fractionLength(0))) }
     var pauseReason: PauseReason? { reason(for: nil) }
     var status: String {
         switch pauseReason {
@@ -118,10 +126,17 @@ final class PaperState: ObservableObject {
         comparing = false
         if settings.enabled { settings.snoozeUntil = nil }
     }
-    func snooze(minutes: Double) {
-        guard minutes.isFinite, minutes > 0, minutes <= 24 * 60 else { return }
+    func snooze(minutes: Double, at date: Date = Date()) {
+        applySnooze(until: SnoozeOption.deadline(minutes: minutes, after: date), now: date)
+    }
+    func snooze(_ option: SnoozeOption, at date: Date = Date(), calendar: Calendar = .current) {
+        applySnooze(until: option.deadline(after: date, calendar: calendar), now: date)
+    }
+    private func applySnooze(until deadline: Date?, now date: Date) {
+        guard let deadline, deadline > date else { return }
         comparing = false
-        settings.snoozeUntil = Date().addingTimeInterval(minutes * 60)
+        now = date
+        settings.snoozeUntil = deadline
     }
     func refreshClock() { now = Date(); scheduleBoundary() }
     func scheduleBoundary() {

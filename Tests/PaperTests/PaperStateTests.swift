@@ -34,10 +34,57 @@ final class PaperStateTests: XCTestCase {
         XCTAssertEqual(a.engineVersion, .legacy)
     }
     func testMalformedLargeAndFutureRecipesAreRejected() {
-        XCTAssertThrowsError(try RecipeImport.decode(Data("{}".utf8)))
+        XCTAssertThrowsError(try RecipeImport.decode(Data("{}".utf8))) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Deckle paper recipe"))
+        }
         XCTAssertThrowsError(try RecipeImport.decode(Data(repeating: 0, count: 1_048_577)))
         let future = Data(#"{"id":"x","name":"X","tintRed":1,"tintGreen":1,"tintBlue":1,"wash":0.3,"weave":0,"blotch":0,"engineVersion":999}"#.utf8)
         XCTAssertThrowsError(try RecipeImport.decode(future))
+    }
+    func testExpandedCatalogRendersAndPreservesSelectionsAcrossLaunches() {
+        let presets = PaperState.builtIns
+        XCTAssertEqual(presets.count, 10)
+        XCTAssertEqual(Set(presets.map(\.id)).count, 10)
+        for preset in presets {
+            withDefaults { defaults in
+                let state = PaperState(defaults: defaults)
+                state.settings.textureID = preset.id
+                let restarted = PaperState(defaults: defaults)
+                XCTAssertEqual(restarted.texture.id, preset.id)
+                let tile = TextureRenderer.compositeTile(for: restarted.texture, backingScale: 1)
+                XCTAssertNotNil(tile.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            }
+        }
+    }
+    func testSnoozePersistsAndResumesOnlyWhenOtherRulesAllow() {
+        withDefaults { defaults in
+            let now = Date(timeIntervalSince1970: 1_800_000_000)
+            let state = PaperState(defaults: defaults)
+            state.comparing = true
+            state.snooze(minutes: 45, at: now)
+            let deadline = now.addingTimeInterval(45 * 60)
+            XCTAssertEqual(state.settings.snoozeUntil, deadline)
+            XCTAssertFalse(state.comparing)
+            state.snooze(minutes: .nan, at: now)
+            XCTAssertEqual(state.settings.snoozeUntil, deadline)
+            let restarted = PaperState(defaults: defaults)
+            XCTAssertEqual(restarted.settings.snoozeUntil, deadline)
+            restarted.settings.pauseOnBattery = true
+            restarted.onBattery = true
+            restarted.now = deadline
+            XCTAssertEqual(restarted.pauseReason, .battery)
+            restarted.settings.enabled = false
+            restarted.snooze(.tomorrow, at: now)
+            XCTAssertEqual(restarted.pauseReason, .disabled)
+        }
+    }
+    func testIntensityAccessibilityDescriptionMatchesRoundedDisplay() {
+        withDefaults { defaults in
+            let state = PaperState(defaults: defaults)
+            state.settings.intensity = 0.29
+            XCTAssertEqual(state.intensityDescription, 0.29.formatted(.percent.precision(.fractionLength(0))))
+            XCTAssertTrue(state.intensityDescription.contains("29"))
+        }
     }
     func testRecipeRoundTripAndPartialImportFailure() throws {
         try withDefaults { defaults in

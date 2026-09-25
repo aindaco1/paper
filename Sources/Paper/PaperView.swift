@@ -36,9 +36,9 @@ struct PaperView: View {
                     HStack {
                         Slider(value: $state.settings.intensity, in: 0.05...0.45, step: 0.01) {
                             Text("Intensity")
-                        }.accessibilityValue("\(Int(state.settings.intensity * 100)) percent")
+                        }.accessibilityValue(state.intensityDescription)
                             .accessibilityIdentifier("paper.intensity")
-                        Text(state.settings.intensity, format: .percent.precision(.fractionLength(0)))
+                        Text(state.intensityDescription)
                             .monospacedDigit().frame(width: 38).accessibilityHidden(true)
                     }
                     Picker("Grain", selection: $state.settings.grainScale) {
@@ -51,9 +51,11 @@ struct PaperView: View {
                             .disabled(!state.settings.enabled)
                         Spacer()
                         Menu("Snooze") {
-                            Button("15 minutes") { state.snooze(minutes: 15) }
-                            Button("30 minutes") { state.snooze(minutes: 30) }
-                            Button("1 hour") { state.snooze(minutes: 60) }
+                            ForEach(SnoozeOption.allCases) { option in
+                                Button(option.title) { state.snooze(option) }
+                            }
+                            Divider()
+                            Button("Custom duration…") { state.showingCustomSnooze = true }
                         }.fixedSize().disabled(!state.settings.enabled)
                         if let until = state.settings.snoozeUntil, until > state.now {
                             Button("End snooze") { state.settings.snoozeUntil = nil }
@@ -115,8 +117,11 @@ struct PaperView: View {
                     Toggle("Toggle with ⇧⌥⌘P", isOn: $state.settings.shortcutEnabled)
                     if let error = state.shortcutError { Text(error).font(.caption).foregroundStyle(.red) }
                     Toggle("Launch at login", isOn: Binding(get: { state.loginState == .enabled }, set: { _ in state.toggleLogin() }))
+                        .disabled(state.loginState == .unavailable)
                     if state.loginState == .requiresApproval {
                         Button("Approve in Login Items…") { state.login.openSystemSettings() }
+                    } else if state.loginState == .unavailable {
+                        Text("Launch at login is unavailable on this Mac.").font(.caption).foregroundStyle(.secondary)
                     }
                     Text("Pause Paper before screenshots, screen sharing, or color-sensitive work.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -130,6 +135,7 @@ struct PaperView: View {
             }.padding(.horizontal, 22).padding(.vertical, 12)
         }
         .frame(minWidth: 480, minHeight: 550)
+        .sheet(isPresented: $state.showingCustomSnooze) { CustomSnoozeView(state: state) }
         .alert(item: $state.alert) { alert in
             Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
         }

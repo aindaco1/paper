@@ -2,9 +2,13 @@
 
 A small, free, open-source paper-texture overlay for Apple Silicon Macs running macOS 13 or later.
 
-Paper has three built-in textures, intensity and grain controls, an instant comparison, snooze, display selection, app exclusions, a daily schedule, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The menu-bar shortcut is **Shift–Option–Command–P**. Launch at login is optional.
+Paper has ten built-in textures, intensity and grain controls, an instant comparison, snooze, display selection, app exclusions, a daily schedule, battery/Low Power Mode pause, and Deckle-compatible JSON imports. The menu-bar shortcut is **Shift–Option–Command–P**. Launch at login is optional.
+
+The bundled textures are Quiet Gray, Book Cream, Soft Wove, Rice Paper, Laid Cotton, Newsprint, Cold Press, Artist Canvas, Foxed Amber, and Bookcloth. The seven additions follow Deckle's material-paper catalog order; no public popularity ranking was found. Your selected texture is preserved when updating.
 
 Open Paper to show settings. Close the settings window to leave the effect running. Use its menu-bar icon to toggle, snooze or quit. Comparison ends when settings close. Snoozing, excluded apps/displays, battery rules and schedules never override the master off switch.
+
+Both snooze menus offer 15/30/60/120 minutes, **Until tomorrow at 6 AM**, and **Custom duration…** (1–1,440 whole minutes). Tomorrow means the next calendar day in the Mac's current time zone; the deadline is saved as an absolute time. A snooze survives relaunch, and its expiry still respects schedule, battery and exclusion rules.
 
 The schedule uses the Mac's local time, supports overnight windows, includes the start time and excludes the end time. Equal start/end times mean all day. Nonexistent daylight-saving times advance to the next valid time; repeated times use the first occurrence. A one-shot timer and wake/timezone notifications update the effect without polling.
 

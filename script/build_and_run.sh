@@ -5,17 +5,15 @@ cd "$task_root"
 mode="${1:-run}"
 case "$mode" in run|--verify|--build-only|--debug|--logs|--telemetry) ;; *) echo "usage: $0 [--verify|--build-only|--debug|--logs|--telemetry]" >&2; exit 2;; esac
 app_bundle="$task_root/dist/Paper.app"
-# Restrict termination to this project's own app path.
-if [[ "$mode" != "--build-only" ]]; then
-    python3 - "$app_bundle/Contents/MacOS/Paper" <<'PY'
+# Stop both project copies so overlays cannot stack or steal each other's shortcut.
+python3 - "$app_bundle/Contents/MacOS/Paper" "$task_root/outputs/Paper.app/Contents/MacOS/Paper" <<'PY'
 import os,signal,subprocess,sys
 for row in subprocess.check_output(['/bin/ps','-axo','pid=,comm='],text=True).splitlines():
     fields=row.strip().split(None,1)
-    if len(fields)==2 and fields[1]==sys.argv[1]:
+    if len(fields)==2 and fields[1] in sys.argv[1:]:
         try: os.kill(int(fields[0]),signal.SIGTERM)
         except ProcessLookupError: pass
 PY
-fi
 swift build -c release --arch arm64
 binary_root="$(swift build -c release --arch arm64 --show-bin-path)"
 mkdir -p "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources/Licenses"
@@ -41,9 +39,13 @@ case "$mode" in
     --verify)
         open -n "$app_bundle"
         sleep 2
-        pgrep -x Paper >/dev/null
+        python3 - "$app_bundle/Contents/MacOS/Paper" <<'PY'
+import subprocess,sys
+paths=subprocess.check_output(['/bin/ps','-axo','comm='],text=True).splitlines()
+if sys.argv[1] not in (path.strip() for path in paths):
+    sys.exit('The newly built Paper app did not stay running.')
+PY
         echo "Paper built and launched."
         ;;
     run) open -n "$app_bundle" ;;
 esac
-
