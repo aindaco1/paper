@@ -14,7 +14,7 @@ swift test
 
 Local UI checks should exercise the actual bundled application: toggle, texture/intensity changes, compare, snooze/resume, a display exclusion, app exclusion, schedule gating, valid/invalid recipe imports, persistence after relaunch, the global shortcut, and clean quit. Do not toggle launch at login or change system battery settings merely to make a test pass; use the adapter/policy tests for those paths and mark real system acceptance separately.
 
-The declared deployment floor is macOS 13 with an arm64 binary. Runtime testing on macOS 13/14/15/26 and other Apple Silicon machines, base-memory M1, HDR/EDR, mixed external monitors, fullscreen/Stage Manager, hot-plug, sleep/wake and screen-sharing tools remains required before a broad compatibility claim. Developer ID distribution, notarization and a real signed-update installation are separate release work.
+The declared deployment floor is macOS 13 with an arm64 binary. Runtime testing on macOS 13/14/15/26 and other Apple Silicon machines, base-memory M1, HDR/EDR, mixed external monitors, fullscreen/Stage Manager, hot-plug, sleep/wake and screen-sharing tools remains required before a broad compatibility claim. Developer ID distribution, notarization and installation from the signed DMG have their own checks.
 
 September 24, 2026, version 0.1.0 results:
 
@@ -46,3 +46,18 @@ Version 0.1.2 follow-up:
 - The renderer and preset source remain unchanged. Only the catalog exposure and default/fallback selection changed.
 
 Older-OS, hardware, fullscreen and notarization qualification remains outstanding as described above.
+
+Version 0.2.0 follow-up:
+
+- 60 XCTest tests passed. New coverage checks favorite persistence/catalog completeness, saved appearance restoration without changing visibility rules, stable look identities on replacement, look limits/deletion, old schedule decoding, local solar boundaries, the date line, DST, polar days/nights, missing-city behavior and manual/display precedence.
+- The actual Developer ID-signed app passed live favorite/save/apply/remove checks. A saved Soft Wove/34%/coarse-grain look restored all three values after they changed. Favorites appeared first without duplicate catalog entries.
+- All five native actions appeared in Shortcuts and ran successfully: Toggle Paper, Set Paper Enabled, Snooze Paper, Select Paper Texture and Apply Paper Look. Texture and saved-look entities resolved in the system picker. The initial ad-hoc build was rejected by macOS 27's App Intents mediator for lacking a team identity; the Developer ID build fixed that runtime failure.
+- The city picker resolved London, displayed its local approximate sunrise/sunset, and activated the solar schedule. Missing-city mode paused safely; clearing the city was also tested. The test city, favorite and saved look were removed, and the user's original Soft Wove/34%/coarse appearance and fixed schedule-off/power/login preferences were restored.
+- Paper's real executable passed 15 native virtual-display checks with Platform's shared fixture: 1×/2×, right/left/above, a non-16:9 monitor, all-display coverage, exclusions, manual off and live attach/remove. Geometry, opacity and unchanged foreground PID were asserted. Two deterministic oracle tests reject wrong bounds, focus, opacity, duplicate windows and visible excluded/off overlays.
+- The shared fixture's three characterization tests passed. AppKit and OwlSwitch's injected Qt enumeration both passed 1×/2× capability checks and exact topology restoration. Platform `npm test` passed, as did OwlSwitch's five existing regression-oracle tests.
+- The migrated OwlSwitch full-app suite passed all 18 cases against the supplied existing app: ten cold starts, delayed switching, cancellation, same-screen playback, the negative control, Retina, letterboxed, left and above layouts. Exact original topology restoration was confirmed after every fixture. Earlier runs exposed desktop focus interference (one recorded interruption was Record taking the foreground); the final idle-desktop rerun passed without changing assertions. The migration remains an isolated local branch with rollback instructions, not a published OwlSwitch release.
+- Developer ID signing, Apple notarization acceptance, ticket stapling and Gatekeeper acceptance were exercised for Paper.app. Final packaged app/DMG receipts and native evidence are delivered alongside the app in outputs.
+
+The test harness accepts only UUID-named disposable preferences suites. A distinct test opacity proves isolation; only test-owned processes are stopped and UUID-domain data is cleared. It does not modify login items or power preferences and takes no screenshots. Native helpers are test-only, separately GPL-3.0-licensed, and excluded from the MIT application.
+
+The virtual suite does not qualify fullscreen Spaces, physical click-through, HDR/EDR, actual monitor firmware/cables, sleep/wake, or all macOS 13+ hardware. Those remain manual/physical acceptance work. Notarization is a trust/distribution check, not hardware compatibility proof.

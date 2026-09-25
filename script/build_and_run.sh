@@ -24,8 +24,13 @@ cp LICENSE "$app_bundle/Contents/Resources/Licenses/Paper-MIT.txt"
 cp THIRD_PARTY_NOTICES.md "$app_bundle/Contents/Resources/"
 swift script/generate_icon.swift "$task_root/dist"
 iconutil -c icns "$task_root/dist/Paper.iconset" -o "$app_bundle/Contents/Resources/Paper.icns"
+python3 script/generate_intents.py "$app_bundle"
 # A local development signature. Public distribution needs Developer ID + notarization.
-codesign --force --sign - --options runtime "$app_bundle"
+if [[ -n "${PAPER_SIGNING_IDENTITY:-}" ]]; then
+    codesign --force --sign "$PAPER_SIGNING_IDENTITY" --timestamp --options runtime "$app_bundle"
+else
+    codesign --force --sign - --options runtime "$app_bundle"
+fi
 codesign --verify --deep --strict "$app_bundle"
 plutil -lint "$app_bundle/Contents/Info.plist"
 [[ "$(lipo -archs "$app_bundle/Contents/MacOS/Paper")" == "arm64" ]]

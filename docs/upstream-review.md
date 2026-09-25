@@ -32,10 +32,16 @@ The follow-up also fixes the local build workflow: it stops both project-owned a
 
 Version 0.1.2 replaces the separate list of ten texture IDs with Deckle's complete pinned catalog. Soft Wove (`classic-matte`) appears first and is the default for new installations, unreadable settings, and unavailable or removed selections. Valid saved choices remain unchanged. No renderer, recipe format or vendor file changed.
 
-Roadmap suggestions, not implemented in this build:
+Roadmap suggestions recorded for version 0.1.2:
 
 - Favorites or a few saved combinations of texture, intensity and grain would make the larger catalog easier to use. Deckle's existing desk setups provide a reference; keep Paper's version small.
 - Native Shortcuts actions for toggle, snooze and texture selection could reuse Paper's state commands without a new automation server or URL parser.
 - Actual sunrise/sunset scheduling remains on the [Deckle roadmap](https://github.com/YellowFoxH4XOR/deckle#roadmap) and [issue 19](https://github.com/YellowFoxH4XOR/deckle/issues/19). Paper already has daily fixed-time scheduling; solar times would require an explicit city or optional location choice.
 
 Before public distribution, prioritize Developer ID signing, notarization and the hardware/OS acceptance checks recorded in `testing.md`. Battery rules and custom snooze are already implemented; a community browser or recipe editor can wait.
+
+Version 0.2.0 implements those requested follow-ups: favorites, up to eight saved appearance combinations, five native App Intents (including saved-look selection), and city-based sunrise/sunset schedules. The intents use the same state commands as the controls. Solar policy stays in PaperCore; the narrow CoreLocation adapter only resolves an explicitly entered city. NOAA's approximate solar equations run locally and handle polar days/nights, city time zones, and daily reevaluation. Existing fixed-time settings migrate without resetting the user's preferences.
+
+Signing/notarization now uses the installed Developer ID identity and API credentials read directly from Apple Auth. The app and DMG have separate acceptance/stapling checks and receipts. No credentials are copied or hard-coded, no updater was added, and no public release is published by these scripts.
+
+The Platform pin advances to `6bb9854149203ee71445bf150c4ba86fac607d04` for `tools/macos-display` 0.1.0. This separate GPL-3.0 test fixture retains OwlSwitch's license and supports AppKit enumeration or an injected Qt enumerator. Paper's executable contains none of its test helpers/private APIs. The OwlSwitch adapter migration is kept in an isolated local branch. After earlier desktop focus interference, its final idle-desktop run passed all 18 native cases against the supplied app, with exact display restoration. Fixture smoke and oracle tests also passed; see `testing.md`. Physical hardware and public release qualification remain separate.

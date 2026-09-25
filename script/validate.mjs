@@ -7,8 +7,9 @@ import { checkDocumentation } from '../shared/dust-wave-platform/packages/test-c
 import { sha256File } from '../shared/dust-wave-platform/packages/release-core/src/file-integrity.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-assertConsumerPin({ root, expectedCommit: '0affb6c5652611b87947bd87762d8aa17d35ea32',
+assertConsumerPin({ root, expectedCommit: '6bb9854149203ee71445bf150c4ba86fac607d04',
   packages: { 'test-core': '0.3.0', 'release-core': '0.4.0' } });
+assert.equal(readFileSync(resolve(root, 'shared/dust-wave-platform/tools/macos-display/VERSION'), 'utf8').trim(), '0.1.0');
 for (const entry of JSON.parse(readFileSync(resolve(root, 'docs/vendor-sources.json')))) {
   assert.equal(sha256File(resolve(root, entry.path)), entry.sha256, `Vendored source changed: ${entry.path}`);
 }

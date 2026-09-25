@@ -11,6 +11,8 @@ public struct PaperSchedule: Codable, Equatable {
     public var enabled = false
     public var startMinute = 18 * 60
     public var endMinute = 7 * 60
+    public var mode: ScheduleMode = .fixed
+    public var location: SolarLocation?
 
     public init(enabled: Bool = false, startMinute: Int = 18 * 60, endMinute: Int = 7 * 60) {
         self.enabled = enabled
@@ -19,6 +21,12 @@ public struct PaperSchedule: Codable, Equatable {
     }
 
     public func contains(_ date: Date, calendar: Calendar = .current) -> Bool {
+        guard enabled else { return true }
+        if mode != .fixed {
+            guard let location, let day = SolarDay.calculate(on: date, at: location) else { return false }
+            let daylight = day.isDaylight(at: date)
+            return mode == .sunriseToSunset ? daylight : !daylight
+        }
         guard enabled, startMinute != endMinute else { return true }
         let start = boundary(startMinute, on: date, calendar: calendar)
         let end = boundary(endMinute, on: date, calendar: calendar)
@@ -27,6 +35,18 @@ public struct PaperSchedule: Codable, Equatable {
     }
 
     public func nextBoundary(after date: Date, calendar: Calendar = .current) -> Date? {
+        guard enabled else { return nil }
+        if mode != .fixed {
+            guard let location, location.isValid else { return nil }
+            let local = location.calendar
+            let midnight = local.startOfDay(for: date)
+            // Re-evaluate daily even during polar day/night, when no event exists.
+            let days = (0...2).compactMap { local.date(byAdding: .day, value: $0, to: midnight) }
+            return (days + days.flatMap { day -> [Date] in
+                guard let solar = SolarDay.calculate(on: day, at: location) else { return [] }
+                return [solar.sunrise, solar.sunset].compactMap { $0 }
+            }).filter { $0 > date }.min()
+        }
         guard enabled, startMinute != endMinute else { return nil }
         // Resolve each day's first occurrence before filtering, so Calendar
         // cannot return the second occurrence of an already-ended DST boundary.
@@ -39,6 +59,16 @@ public struct PaperSchedule: Codable, Equatable {
         calendar.nextDate(after: calendar.startOfDay(for: date).addingTimeInterval(-1),
             matching: DateComponents(hour: minute / 60, minute: minute % 60, second: 0),
             matchingPolicy: .nextTime, repeatedTimePolicy: .first)!
+    }
+
+    private enum CodingKeys: String, CodingKey { case enabled, startMinute, endMinute, mode, location }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try values.decode(Bool.self, forKey: .enabled)
+        startMinute = try values.decode(Int.self, forKey: .startMinute)
+        endMinute = try values.decode(Int.self, forKey: .endMinute)
+        mode = try values.decodeIfPresent(ScheduleMode.self, forKey: .mode) ?? .fixed
+        location = try values.decodeIfPresent(SolarLocation.self, forKey: .location)
     }
 }
 

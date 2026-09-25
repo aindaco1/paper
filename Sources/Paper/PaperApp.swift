@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import PaperCore
+import AppIntents
 
 @main
 enum PaperApp {
@@ -27,7 +28,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var previousSettings: PaperCoreSettingsSnapshot?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        state = PaperState()
+        state = PaperState.shared
         overlay = OverlayController(state: state)
         environment = SystemEnvironment(state: state)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -45,6 +46,7 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         environment.start()
         overlay.start()
         synchronize()
+        PaperShortcuts.updateAppShortcutParameters()
         // Explicit background launches omit the controls; reopening always shows them.
         if !ProcessInfo.processInfo.arguments.contains("--background") { showSettings() }
     }
@@ -161,14 +163,10 @@ final class PaperAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
 /// Only changes that affect the next timer boundary trigger rescheduling.
 private struct PaperCoreSettingsSnapshot: Equatable {
-    let start: Int
-    let end: Int
-    let enabled: Bool
+    let schedule: PaperSchedule
     let snooze: Date?
     @MainActor init(state: PaperState) {
-        start = state.settings.schedule.startMinute
-        end = state.settings.schedule.endMinute
-        enabled = state.settings.schedule.enabled
+        schedule = state.settings.schedule
         snooze = state.settings.snoozeUntil
     }
 }

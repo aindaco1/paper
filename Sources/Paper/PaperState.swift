@@ -55,11 +55,21 @@ struct PaperPersistence {
 
 @MainActor
 final class PaperState: ObservableObject {
+    static let shared = PaperState(defaults: applicationDefaults)
+    /// The native harness runs the signed app with a disposable preferences suite.
+    /// Only an explicitly named UUID test suite is accepted; normal launches use standard defaults.
+    private static var applicationDefaults: UserDefaults {
+        if let id = ProcessInfo.processInfo.environment["PAPER_TEST_SUITE"], UUID(uuidString: id) != nil {
+            return UserDefaults(suiteName: "xyz.dustwave.paper.test.\(id)")!
+        }
+        return .standard
+    }
     static let defaultTexture = TexturePreset.preset(id: PaperSettings.defaultTextureID)
     // Use the full pinned catalog, with the default first; no separate ID list to maintain.
     static let builtIns = [defaultTexture] + TexturePreset.all.filter { $0.id != defaultTexture.id }
     @Published var settings: PaperSettings { didSet { persist(settings, key: "settings.v1") } }
     @Published private(set) var customPapers: [CustomPaper]
+    @Published private(set) var library: PaperLibrary
     @Published var comparing = false
     @Published var showingCustomSnooze = false
     @Published var alert: PaperAlert?
@@ -81,6 +91,8 @@ final class PaperState: ObservableObject {
         catch { settings = PaperSettings(); errors.append("Settings could not be read.") }
         do { customPapers = try persistence.load([CustomPaper].self, key: "papers.v1") ?? [] }
         catch { customPapers = []; errors.append("Imported paper recipes could not be read.") }
+        do { library = try persistence.load(PaperLibrary.self, key: "library.v1") ?? PaperLibrary() }
+        catch { library = PaperLibrary(); errors.append("Favorites and saved looks could not be read.") }
         settings.normalize()
         if !allTextures.contains(where: { $0.id == settings.textureID }) { settings.textureID = Self.defaultTexture.id }
         if !errors.isEmpty {
@@ -91,6 +103,8 @@ final class PaperState: ObservableObject {
     }
 
     var allTextures: [TexturePreset] { Self.builtIns + customPapers.map(TexturePreset.init(custom:)) }
+    var favoriteTextures: [TexturePreset] { allTextures.filter { library.favorites.contains($0.id) } }
+    var otherTextures: [TexturePreset] { allTextures.filter { !library.favorites.contains($0.id) } }
     var texture: TexturePreset { allTextures.first { $0.id == settings.textureID } ?? Self.defaultTexture }
     var adjustments: TextureRenderer.GrainAdjustments {
         .init(scale: settings.grainScale, strength: settings.grainStrength)
@@ -106,7 +120,9 @@ final class PaperState: ObservableObject {
         case .applicationExcluded: return "Paused for an excluded app"
         case .battery: return "Paused on battery"
         case .lowPower: return "Paused in Low Power Mode"
-        case .outsideSchedule: return "Waiting for your schedule"
+        case .outsideSchedule:
+            return settings.schedule.mode != .fixed && settings.schedule.location?.isValid != true
+                ? "Choose a city for your schedule" : "Waiting for your schedule"
         case nil:
             if !displayChoices.isEmpty && displayChoices.allSatisfy({ settings.disabledDisplays.contains($0.id) }) {
                 return "Choose a display to show Paper"
@@ -121,9 +137,52 @@ final class PaperState: ObservableObject {
             comparing: comparing, now: now)
     }
     func toggle() {
-        settings.enabled.toggle()
+        setEnabled(!settings.enabled)
+    }
+    func setEnabled(_ enabled: Bool) {
+        settings.enabled = enabled
         comparing = false
         if settings.enabled { settings.snoozeUntil = nil }
+    }
+    func selectTexture(_ id: String) throws {
+        guard allTextures.contains(where: { $0.id == id }) else { throw PaperActionError.missingTexture }
+        settings.textureID = id
+    }
+    func toggleFavorite() {
+        var updated = library
+        if !updated.favorites.insert(settings.textureID).inserted { updated.favorites.remove(settings.textureID) }
+        saveLibrary(updated)
+    }
+    @discardableResult func saveLook(name: String) throws -> UUID {
+        let name = String(name.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) })
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 60 else { throw PaperActionError.invalidName }
+        var updated = library
+        var look = PaperLook(name: name, settings: settings)
+        if let index = updated.looks.firstIndex(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+            look.id = updated.looks[index].id
+            updated.looks[index] = look
+        } else {
+            guard updated.looks.count < PaperLibrary.maximumLooks else { throw PaperActionError.tooManyLooks }
+            updated.looks.append(look)
+        }
+        try persistence.save(updated, key: "library.v1")
+        library = updated
+        return look.id
+    }
+    func applyLook(_ id: UUID) throws {
+        guard let look = library.looks.first(where: { $0.id == id }) else { throw PaperActionError.missingLook }
+        guard allTextures.contains(where: { $0.id == look.textureID }) else { throw PaperActionError.missingTexture }
+        look.apply(to: &settings)
+    }
+    func removeLook(_ id: UUID) {
+        var updated = library
+        updated.looks.removeAll { $0.id == id }
+        saveLibrary(updated)
+    }
+    private func saveLibrary(_ updated: PaperLibrary) {
+        do { try persistence.save(updated, key: "library.v1"); library = updated }
+        catch { showError("Could not save your library", error) }
     }
     func snooze(minutes: Double, at date: Date = Date()) {
         applySnooze(until: SnoozeOption.deadline(minutes: minutes, after: date), now: date)
@@ -180,10 +239,14 @@ final class PaperState: ObservableObject {
         if !failures.isEmpty { alert = PaperAlert(title: "Some papers could not be imported", message: failures.joined(separator: "\n\n")) }
     }
     func removeSelectedImport() {
+        let removedID = settings.textureID
         let remaining = customPapers.filter { $0.id != settings.textureID }
         do {
             try persistence.save(remaining, key: "papers.v1")
             customPapers = remaining
+            var updated = library
+            updated.removeTexture(removedID)
+            saveLibrary(updated)
             settings.textureID = Self.defaultTexture.id
         } catch { showError("Could not remove paper", error) }
     }
@@ -203,6 +266,19 @@ final class PaperState: ObservableObject {
     func toggleLogin() {
         do { loginState = try login.toggle() }
         catch { refreshLogin(); showError("Could not change launch at login", error) }
+    }
+}
+
+enum PaperActionError: LocalizedError {
+    case missingTexture, missingLook, invalidName, tooManyLooks, invalidDuration
+    var errorDescription: String? {
+        switch self {
+        case .missingTexture: return "This texture is no longer available. Choose another paper."
+        case .missingLook: return "This saved look is no longer available."
+        case .invalidName: return "Give this look a name between 1 and 60 characters."
+        case .tooManyLooks: return "You can save up to eight looks. Remove one or reuse an existing name to replace it."
+        case .invalidDuration: return "Choose a whole number of minutes between 1 and 1,440."
+        }
     }
 }
 

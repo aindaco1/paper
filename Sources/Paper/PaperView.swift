@@ -29,8 +29,16 @@ struct PaperView: View {
             Form {
                 Section("Your paper") {
                     Picker("Texture", selection: $state.settings.textureID) {
-                        ForEach(state.allTextures) { texture in Text(texture.name).tag(texture.id) }
+                        if !state.favoriteTextures.isEmpty {
+                            Section("Favorites") {
+                                ForEach(state.favoriteTextures) { texture in Text(texture.name).tag(texture.id) }
+                            }
+                        }
+                        Section("All papers") {
+                            ForEach(state.otherTextures) { texture in Text(texture.name).tag(texture.id) }
+                        }
                     }.accessibilityIdentifier("paper.texture")
+                    LibraryControls(state: state)
                     TextureSample(preset: state.texture, adjustments: state.adjustments, intensity: state.settings.intensity)
                         .frame(height: 92)
                     HStack {
@@ -72,14 +80,19 @@ struct PaperView: View {
                 Section("When to show it") {
                     Toggle("Use a daily schedule", isOn: $state.settings.schedule.enabled)
                     if state.settings.schedule.enabled {
-                        HStack {
-                            DatePicker("From", selection: timeBinding(start: true), displayedComponents: .hourAndMinute)
-                            DatePicker("To", selection: timeBinding(start: false), displayedComponents: .hourAndMinute)
+                        Picker("Schedule", selection: $state.settings.schedule.mode) {
+                            ForEach(ScheduleMode.allCases) { Text($0.title).tag($0) }
                         }
-                        Text(state.settings.schedule.startMinute == state.settings.schedule.endMinute
-                             ? "Matching times keep Paper available all day."
-                             : "Uses your Mac’s local time. Turning Paper off always takes priority.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        if state.settings.schedule.mode == .fixed {
+                            HStack {
+                                DatePicker("From", selection: timeBinding(start: true), displayedComponents: .hourAndMinute)
+                                DatePicker("To", selection: timeBinding(start: false), displayedComponents: .hourAndMinute)
+                            }
+                            Text(state.settings.schedule.startMinute == state.settings.schedule.endMinute
+                                 ? "Matching times keep Paper available all day."
+                                 : "Uses your Mac’s local time. Turning Paper off always takes priority.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        } else { SolarScheduleControls(state: state) }
                     }
                     Toggle("Pause on battery", isOn: $state.settings.pauseOnBattery)
                     Toggle("Pause in Low Power Mode", isOn: $state.settings.pauseOnLowPower)
