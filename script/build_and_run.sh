@@ -27,6 +27,7 @@ iconutil -c icns "$task_root/dist/Paper.iconset" -o "$app_bundle/Contents/Resour
 python3 script/generate_intents.py "$app_bundle"
 ditto "$task_root/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" "$app_bundle/Contents/Frameworks/Sparkle.framework"
 cp shared/dust-wave-platform/desktop/LICENSE.* "$app_bundle/Contents/Resources/Licenses/"
+cp shared/dust-wave-platform/support/LICENSE.* "$app_bundle/Contents/Resources/Licenses/"
 cp shared/dust-wave-platform/LICENSE "$app_bundle/Contents/Resources/Licenses/DustWavePlatform-MIT.txt"
 install -m 0644 .build/checkouts/Sparkle/LICENSE "$app_bundle/Contents/Resources/Licenses/Sparkle.txt"
 ./script/sign_app.sh "$app_bundle"
