@@ -45,7 +45,7 @@ fi
 git archive HEAD | tar -x -C "$stage/source/Paper"
 platform_commit="$(git rev-parse HEAD:shared/dust-wave-platform)"
 git -C shared/dust-wave-platform archive "$platform_commit" | tar -x -C "$stage/source/Paper/shared/dust-wave-platform"
-ditto -c -k --keepParent "$stage/source/Paper" "outputs/Paper-$app_version-source.zip"
+ditto -c -k --norsrc --noextattr --noqtn --keepParent "$stage/source/Paper" "outputs/Paper-$app_version-source.zip"
 ditto dist/Paper.app outputs/Paper.app
 ditto -c -k --sequesterRsrc --keepParent dist/Paper.app "outputs/Paper-$app_version-update.zip"
 node --input-type=module - "$app_version" <<'JS'
