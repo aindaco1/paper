@@ -1,14 +1,14 @@
 import AppKit
+import PaperCore
 
-/// A full-display Dock surface is a system overview (Mission Control, or Launchpad
-/// on older macOS). Inspect only public ownership, layer and geometry metadata.
+/// Inspect public ownership, layer and geometry metadata for overview surfaces.
 @MainActor
 final class SystemOverviewMonitor {
     private(set) var isActive = false
     private var enabled = false
     private var timer: Timer?
     private var onChange: (() -> Void)?
-    private var dock: NSRunningApplication?
+    private var owners: [String: NSRunningApplication] = [:]
     private var displays: [CGRect] = []
 
     func start(onChange: @escaping () -> Void) {
@@ -27,7 +27,7 @@ final class SystemOverviewMonitor {
     private func refresh() {
         let active = enabled && overviewIsVisible()
         // Occlusion notifications arrive after the entry animation. Query the
-        // current Dock surfaces early enough to keep Paper out of Space thumbnails.
+        // current overview surfaces early enough to keep Paper out of Space thumbnails.
         // The timer stops whenever no overlay is eligible to appear.
         if enabled, timer == nil {
             let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
@@ -46,21 +46,24 @@ final class SystemOverviewMonitor {
     }
 
     private func overviewIsVisible() -> Bool {
-        if dock == nil || dock?.isTerminated == true {
-            dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first
+        for id in ["com.apple.dock", "com.apple.WindowManager"] {
+            if owners[id] == nil || owners[id]?.isTerminated == true {
+                owners[id] = NSRunningApplication.runningApplications(withBundleIdentifier: id).first
+            }
         }
-        // Dock can retain an old overview window while creating another one.
+        // The system can retain an old overview window while creating another one.
         // Always inspect current on-screen windows rather than caching their IDs.
-        guard let dock,
-              let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
                                                        kCGNullWindowID) as? [[String: Any]] else { return false }
         return windows.contains { window in
-            guard (window[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == dock.processIdentifier,
-                  window[kCGWindowLayer as String] as? Int == Int(CGWindowLevelForKey(.dockWindow)),
-                  let alpha = window[kCGWindowAlpha as String] as? Double, alpha > 0,
+            guard let pid = (window[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+                  let owner = owners.first(where: { $0.value.processIdentifier == pid })?.key,
+                  let layer = window[kCGWindowLayer as String] as? Int,
+                  let alpha = window[kCGWindowAlpha as String] as? Double,
                   let bounds = window[kCGWindowBounds as String] as? NSDictionary,
                   let frame = CGRect(dictionaryRepresentation: bounds) else { return false }
-            return displays.contains { frame.insetBy(dx: -1, dy: -1).contains($0) }
+            return SystemOverviewPolicy.isOverviewSurface(ownerBundleID: owner, layer: layer, alpha: alpha,
+                frame: frame, displays: displays, dockWindowLevel: Int(CGWindowLevelForKey(.dockWindow)))
         }
     }
 
@@ -70,7 +73,7 @@ final class SystemOverviewMonitor {
         timer = nil
         onChange = nil
         isActive = false
-        dock = nil
+        owners = [:]
         displays = []
     }
 }

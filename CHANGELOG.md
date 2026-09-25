@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 - 2026-09-25
+
+- Keep the texture visible while revealing the Dock or using Command-Tab. Distinguish their full-display backdrops from Mission Control overview surfaces, with policy and real-desktop regression coverage.
+
 ## 1.0.2 - 2026-09-25
 
 - Hide the overlay during Mission Control so Spaces previews stay readable, and restore the texture promptly on exit. Preserve fullscreen support and pause rules, including repeated overview entry.

@@ -80,6 +80,28 @@ Also inspect the top-row Space previews with the normal app running: they must s
 window contents, not texture or black rectangles. Check both returning to the same
 Space and selecting another Space, including a fullscreen app.
 
+## Dock reveal and Command-Tab
+
+```sh
+python3 Tests/native_display/dock_interactions.py --app dist/Paper.app --evidence outputs/Paper-dock-interactions.json
+```
+
+Quit the ordinary Paper instance first and leave the desktop idle. This suite
+moves the pointer to reveal the real Dock and holds Command-Tab open, twice each.
+It independently confirms the interaction through Dock Accessibility, then checks
+every sampled overlay state for geometry, opacity, level and unchanged focus.
+It fails on an intermediate disappearance even if the texture later returns.
+Twenty-seven checks cover enabled, manual-off and excluded-display cases, including
+restoration. The helper cancels the switcher, releases Command and restores the
+pointer; the driver restores focus and removes its isolated preferences. No Dock
+preferences, permissions or screen contents are changed or captured. Existing
+Accessibility permission is required. Do not interact with the Mac during this run.
+
+Run the Mission Control suite as well: fixing these false pauses must retain
+overview hiding and restoration. The Swift policy tests cover owner/layer/geometry
+classification; the Python oracle tests ensure a temporary disappearance fails.
+The live suite is required to establish actual Dock and switcher behavior on a host.
+
 ## Physical HDR and input
 
 Compile `HDRFixture.swift` as a test-only AppKit executable, then pass an absolute JSONL evidence path when launching it. It renders static extended-linear-sRGB float patches at 0.18, 1, 2 and 4 using `CAMetalLayer`; it never changes brightness, color presets, gamma or power settings. Bring its window to the foreground and allow HDR headroom to settle, then use **Record HDR state**. Compare Paper on/off using the physical shortcut and click **Click-through test** with the real pointer. The evidence records headroom, focus and click counts, without screenshots.
