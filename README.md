@@ -85,3 +85,5 @@ The renderer and recipe model are pinned, attributed Deckle sources. Record supp
 The application is MIT-licensed. The separate native display test tooling is GPL-3.0, retaining OwlSwitch's license. This is an independent app, not a Paperman or Deckle release.
 
 For contribution and release steps, see [CONTRIBUTING](CONTRIBUTING.md), [release workflow](docs/releasing.md), and [roadmap](docs/roadmap.md). Versions through 0.3.0 need one manual installation of an updater-enabled build.
+
+Public guides: [using Paper](docs/user-guide.md), [architecture](docs/architecture.md), and [recipes](docs/recipes.md).
