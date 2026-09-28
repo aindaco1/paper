@@ -177,7 +177,7 @@ These actions use the same controls as the app. Selecting a texture or look ends
 
 Save a recipe to your Mac, choose Import paper…, and select the file. You can select several at once. Paper keeps up to 50 custom papers, with a 1 MB limit per file. If one file can't be imported, Paper reports it; other valid files in that selection can still be added.
 
-To try an example, save [Soft Linen](examples/soft-linen.decklepaper.json) and import it. If your browser displays the file's text, save that file with its `.decklepaper.json` name. To remove a custom paper, select it and choose **Remove imported paper**. The built-in Deckle collection stays available.
+To try an example, open [Soft Linen](examples/soft-linen.decklepaper.json) on GitHub and use **Download raw file**. Import the downloaded `.decklepaper.json` file into Paper. To remove a custom paper, select it and choose **Remove imported paper**. The built-in Deckle collection stays available.
 
 ### Back up your collection
 
